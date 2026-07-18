@@ -1,0 +1,192 @@
+// Ports the same 13 default products from the frontend's lib/products.ts so
+// the DB can price/sell them once seeded. Keep these two lists in sync when
+// the storefront defaults change — see the Phase 2 plan for why this exists
+// (order pricing is always computed server-side from the DB, never trusted
+// from the client, so a product must exist here to be purchasable).
+export const defaultProducts = [
+  {
+    slug: "radiance-boost-serum",
+    name: "Radiance Boost Serum",
+    category: "Face Serums",
+    categoryAccent: "Boost & Correct",
+    price: 34.99,
+    originalPrice: 44.99,
+    image: "/images/eca30ff9-62ea-4126-8301-03d590c8250d.png",
+    tagline: "Brighten & hydrate with Niacinamide",
+    description:
+      "A lightweight daily serum that brightens skin tone, evens complexion, and delivers deep, lasting hydration. Formulated with Niacinamide and Hyaluronic Acid for visibly clearer, more radiant skin.",
+    benefits: [
+      "Brightens & evens skin tone",
+      "Deep, lasting hydration",
+      "Reduces the look of dark spots",
+    ],
+  },
+  {
+    slug: "acne-correcting-serum",
+    name: "Acne Correcting Serum",
+    category: "Face Serums",
+    categoryAccent: "Boost & Correct",
+    price: 34.99,
+    originalPrice: 44.99,
+    image: "/images/img_6205.jpg",
+    tagline: "Fade marks with Alpha Arbutin",
+    description:
+      "A targeted correcting treatment that fades post-acne marks and refines skin texture with Alpha Arbutin, helping skin look calmer and more even over time.",
+    benefits: [
+      "Fades acne marks & hyperpigmentation",
+      "Refines texture",
+      "Non-drying, daily-use formula",
+    ],
+  },
+  {
+    slug: "age-renewal-serum",
+    name: "Age Renewal Serum",
+    category: "Face Serums",
+    categoryAccent: "Boost & Correct",
+    price: 38.99,
+    originalPrice: 48.99,
+    image: "/images/08d216cc-1441-4068-996e-ed7d64a65701.png",
+    tagline: "Renew with Azelaic Acid",
+    description:
+      "A renewing serum powered by Azelaic Acid to support smoother, firmer-looking skin and a more even tone as part of a nightly routine.",
+    benefits: [
+      "Supports skin renewal",
+      "Evens tone & texture",
+      "Gentle enough for nightly use",
+    ],
+  },
+  {
+    slug: "radiance-renewal-face-cream",
+    name: "Radiance Renewal Face Cream",
+    category: "Face Creams",
+    categoryAccent: "Renew & Correct",
+    price: 32.99,
+    originalPrice: 42.99,
+    image: "/images/b49340ae-6fe1-47f6-be61-8eac75c0ccbf.png",
+    tagline: "Deep hydration & renewal",
+    description:
+      "A rich daily face cream that locks in moisture and supports overnight skin renewal, leaving skin soft, plump, and glowing by morning.",
+    benefits: ["Deep hydration", "Supports overnight renewal", "Soft, glowing finish"],
+  },
+  {
+    slug: "pigment-corrector-face-cream",
+    name: "Pigment Corrector Cream",
+    category: "Face Creams",
+    categoryAccent: "Renew & Correct",
+    price: 36.99,
+    originalPrice: 46.99,
+    image: "/images/42cbfe95-d2a7-4d13-8a5e-72e62dcf1792.png",
+    tagline: "Target hyperpigmentation",
+    description:
+      "A targeted cream formulated to visibly reduce the appearance of hyperpigmentation and dark spots, for a brighter, more balanced complexion.",
+    benefits: [
+      "Targets dark spots & hyperpigmentation",
+      "Brightens complexion",
+      "Balances uneven tone",
+    ],
+  },
+  {
+    slug: "radiance-barrier-face-oil",
+    name: "Radiance Barrier Face Oil",
+    category: "Face Creams",
+    categoryAccent: "Renew & Correct",
+    price: 38.99,
+    originalPrice: 49.99,
+    image: "/images/9cb3aae2-d6b9-4d9d-8a24-e679c00c2705.png",
+    tagline: "Squalane & Argan Oil blend",
+    description:
+      "A nourishing face oil blend of Squalane and Argan Oil that strengthens the skin barrier and locks in hydration for a healthy, dewy glow.",
+    benefits: ["Strengthens skin barrier", "Locks in moisture", "Dewy, healthy glow"],
+  },
+  {
+    slug: "clarifying-foam-cleanser",
+    name: "Clarifying Foam Cleanser",
+    category: "Cleanse & Tone",
+    categoryAccent: "Purify & Balance",
+    price: 28.99,
+    originalPrice: 36.99,
+    image: "/images/432e42ab-30fd-4531-815a-e4ece090058b.png",
+    tagline: "Salicylic Acid pore cleanser",
+    description:
+      "A gentle daily foaming cleanser with Salicylic Acid that clears pores of excess oil and impurities without stripping the skin.",
+    benefits: ["Clears pores", "Removes excess oil", "Gentle, non-stripping"],
+  },
+  {
+    slug: "clarifying-black-soap",
+    name: "Clarifying Black Soap",
+    category: "Cleanse & Tone",
+    categoryAccent: "Purify & Balance",
+    price: 22.99,
+    originalPrice: 28.99,
+    image: "/images/5d4e84fb-2a40-4b0c-ae19-62d695738a31.png",
+    tagline: "African Black Soap deep cleanse",
+    description:
+      "A traditional African Black Soap deep-cleanse bar that purifies skin and helps calm irritation, leaving skin feeling clean and balanced.",
+    benefits: ["Deep cleanses", "Calms irritation", "Traditional, gentle formula"],
+  },
+  {
+    slug: "radiance-balance-toner",
+    name: "Radiance Balance Toner",
+    category: "Cleanse & Tone",
+    categoryAccent: "Purify & Balance",
+    price: 24.99,
+    originalPrice: 32.99,
+    image: "/images/056bf54d-5022-45a9-861d-fa2a3620f4a3.png",
+    tagline: "Balance & refine pores",
+    description:
+      "A refreshing toner that restores optimal skin pH, refines the look of pores, and preps skin to better absorb the treatments that follow.",
+    benefits: ["Balances skin pH", "Refines pores", "Boosts serum absorption"],
+  },
+  {
+    slug: "exfoliating-body-scrub",
+    name: "Exfoliating Body Scrub",
+    category: "Body Care",
+    categoryAccent: "Glow & Nourish",
+    price: 29.99,
+    originalPrice: 39.99,
+    image: "/images/19ea7a51-adb2-4a49-bcb7-0bbc0116f4f2.png",
+    tagline: "Kojic Acid & Lemon brightening",
+    description:
+      "A brightening body scrub with Kojic Acid and Lemon that gently exfoliates dead skin, smooths rough texture, and reveals a more even tone.",
+    benefits: ["Brightens & evens tone", "Smooths rough texture", "Gently exfoliates"],
+  },
+  {
+    slug: "purifying-body-wash",
+    name: "Purifying Body Wash",
+    category: "Body Care",
+    categoryAccent: "Glow & Nourish",
+    price: 24.99,
+    originalPrice: 31.99,
+    image: "/images/2999b980-d234-482d-9e97-982f1bf1579a.png",
+    tagline: "Kaolin Clay daily cleanser",
+    description:
+      "A daily body wash with Kaolin Clay that gently draws out impurities while keeping skin soft, clean, and balanced.",
+    benefits: ["Draws out impurities", "Keeps skin soft", "Daily-use formula"],
+  },
+  {
+    slug: "radiance-repair-body-lotion",
+    name: "Radiance Repair Body Lotion",
+    category: "Body Care",
+    categoryAccent: "Glow & Nourish",
+    price: 27.99,
+    originalPrice: 35.99,
+    image: "/images/5bbe98ac-b9a9-40aa-95a1-ad2f9d7a2ce6.png",
+    tagline: "Tranexamic Acid & Vitamin C",
+    description:
+      "A repairing daily body lotion with Tranexamic Acid and Vitamin C that helps even skin tone and restore radiance from neck to toe.",
+    benefits: ["Evens skin tone", "Restores radiance", "Lightweight daily wear"],
+  },
+  {
+    slug: "luminous-glow-body-oil",
+    name: "Luminous Glow Body Oil",
+    category: "Body Care",
+    categoryAccent: "Glow & Nourish",
+    price: 32.99,
+    originalPrice: 42.99,
+    image: "/images/0323d23a-ed8d-4ab5-8f52-b8a8eb31e04f.png",
+    tagline: "Argan & Sweet Almond Oil",
+    description:
+      "A fast-absorbing dry body oil blended with Argan and Sweet Almond Oil for a luminous, non-greasy glow from head to toe.",
+    benefits: ["Luminous, non-greasy glow", "Fast-absorbing", "Nourishes dry skin"],
+  },
+];

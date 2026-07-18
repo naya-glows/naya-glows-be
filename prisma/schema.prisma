@@ -1,0 +1,194 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  CUSTOMER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(CUSTOMER)
+  country      String?
+  currency     String   @default("USD")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  orders        Order[]
+  savedProducts SavedProduct[]
+}
+
+model Product {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  name          String
+  category      String
+  categoryAccent String?
+  price         Float
+  originalPrice Float
+  image         String
+  tagline       String
+  description   String
+  benefits      String[]
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  orderItems    OrderItem[]
+  savedByUsers  SavedProduct[]
+}
+
+model SavedProduct {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+}
+
+// Operational config (FX rate, subscription discount, etc.) — separate from
+// ContentBlock, which is marketing copy. Missing keys mean "use the
+// hardcoded default", same fallback philosophy as everything else.
+model Setting {
+  key   String @id
+  value String
+}
+
+// Generic override store for site content sections (hero copy, testimonials, etc.)
+// Keyed by a section identifier, e.g. "home.hero". Missing keys mean "use the
+// hardcoded frontend default" — this table only ever holds overrides.
+model ContentBlock {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  data      Json
+  updatedAt DateTime @updatedAt
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+}
+
+// Schema only for now — populated once the Paystack phase is built.
+model Order {
+  id              String      @id @default(cuid())
+  userId          String?
+  user            User?       @relation(fields: [userId], references: [id])
+  status          OrderStatus @default(PENDING)
+  currency        String      @default("USD")
+  subtotal        Float
+  shipping        Float       @default(0)
+  total           Float
+  shippingDetails Json?
+  paidAt          DateTime?
+  // Admin manual override of the tracking stage — when set, overrides the
+  // automatic time-based simulation in tracking.ts.
+  manualStage     String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  items    OrderItem[]
+  payments Payment[]
+}
+
+model OrderItem {
+  id             String  @id @default(cuid())
+  orderId        String
+  order          Order   @relation(fields: [orderId], references: [id])
+  productId      String
+  product        Product @relation(fields: [productId], references: [id])
+  qty            Int
+  price          Float
+  isSubscription Boolean @default(false)
+}
+
+model ConsultationRequest {
+  id            String    @id @default(cuid())
+  name          String
+  email         String
+  phone         String?
+  skinConcern   String
+  preferredDate DateTime?
+  message       String?
+  status        String    @default("NEW")
+  createdAt     DateTime  @default(now())
+}
+
+model WholesaleInquiry {
+  id           String   @id @default(cuid())
+  businessName String
+  contactName  String
+  email        String
+  phone        String?
+  message      String?
+  status       String   @default("NEW")
+  createdAt    DateTime @default(now())
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String?
+  message   String
+  status    String   @default("NEW")
+  createdAt DateTime @default(now())
+}
+
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
+// A log of admin-sent email blasts — not a scheduler, just a record.
+model EmailCampaign {
+  id             String   @id @default(cuid())
+  subject        String
+  html           String
+  recipientCount Int
+  createdAt      DateTime @default(now())
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+// Schema only for now — populated once the Paystack phase is built.
+model Payment {
+  id                String        @id @default(cuid())
+  orderId           String
+  order             Order         @relation(fields: [orderId], references: [id])
+  provider          String        @default("paystack")
+  providerReference String?       @unique
+  amount            Float
+  currency          String
+  status            PaymentStatus @default(PENDING)
+  createdAt         DateTime      @default(now())
+}
+
+// Manual admin-entered expense/income lines for the budget tracker (later phase).
+model BudgetEntry {
+  id          String   @id @default(cuid())
+  label       String
+  amount      Float
+  type        String // "income" | "expense"
+  note        String?
+  createdAt   DateTime @default(now())
+}
