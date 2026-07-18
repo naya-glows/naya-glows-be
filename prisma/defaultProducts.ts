@@ -11,7 +11,7 @@ export const defaultProducts = [
     categoryAccent: "Boost & Correct",
     price: 34.99,
     originalPrice: 44.99,
-    image: "/images/eca30ff9-62ea-4126-8301-03d590c8250d.png",
+    image: "https://res.cloudinary.com/bhozkz7o/image/upload/v1784381851/naya-glows/legacy/eca30ff9-62ea-4126-8301-03d590c8250d.png",
     tagline: "Brighten & hydrate with Niacinamide",
     description:
       "A lightweight daily serum that brightens skin tone, evens complexion, and delivers deep, lasting hydration. Formulated with Niacinamide and Hyaluronic Acid for visibly clearer, more radiant skin.",
@@ -28,7 +28,7 @@ export const defaultProducts = [
     categoryAccent: "Boost & Correct",
     price: 34.99,
     originalPrice: 44.99,
-    image: "/images/img_6205.jpg",
+    image: "https://res.cloudinary.com/bhozkz7o/image/upload/v1784381853/naya-glows/legacy/img_6205.jpg",
     tagline: "Fade marks with Alpha Arbutin",
     description:
       "A targeted correcting treatment that fades post-acne marks and refines skin texture with Alpha Arbutin, helping skin look calmer and more even over time.",
@@ -45,7 +45,7 @@ export const defaultProducts = [
     categoryAccent: "Boost & Correct",
     price: 38.99,
     originalPrice: 48.99,
-    image: "/images/08d216cc-1441-4068-996e-ed7d64a65701.png",
+    image: "https://res.cloudinary.com/bhozkz7o/image/upload/v1784381833/naya-glows/legacy/08d216cc-1441-4068-996e-ed7d64a65701.png",
     tagline: "Renew with Azelaic Acid",
     description:
       "A renewing serum powered by Azelaic Acid to support smoother, firmer-looking skin and a more even tone as part of a nightly routine.",
@@ -62,7 +62,7 @@ export const defaultProducts = [
     categoryAccent: "Renew & Correct",
     price: 32.99,
     originalPrice: 42.99,
-    image: "/images/b49340ae-6fe1-47f6-be61-8eac75c0ccbf.png",
+    image: "https://res.cloudinary.com/bhozkz7o/image/upload/v1784381847/naya-glows/legacy/b49340ae-6fe1-47f6-be61-8eac75c0ccbf.png",
     tagline: "Deep hydration & renewal",
     description:
       "A rich daily face cream that locks in moisture and supports overnight skin renewal, leaving skin soft, plump, and glowing by morning.",
@@ -75,7 +75,7 @@ export const defaultProducts = [
     categoryAccent: "Renew & Correct",
     price: 36.99,
     originalPrice: 46.99,
-    image: "/images/42cbfe95-d2a7-4d13-8a5e-72e62dcf1792.png",
+    image: "https://res.cloudinary.com/bhozkz7o/image/upload/v1784381838/naya-glows/legacy/42cbfe95-d2a7-4d13-8a5e-72e62dcf1792.png",
     tagline: "Target hyperpigmentation",
     description:
       "A targeted cream formulated to visibly reduce the appearance of hyperpigmentation and dark spots, for a brighter, more balanced complexion.",
@@ -92,7 +92,7 @@ export const defaultProducts = [
     categoryAccent: "Renew & Correct",
     price: 38.99,
     originalPrice: 49.99,
-    image: "/images/9cb3aae2-d6b9-4d9d-8a24-e679c00c2705.png",
+    image: "https://res.cloudinary.com/bhozkz7o/image/upload/v1784381845/naya-glows/legacy/9cb3aae2-d6b9-4d9d-8a24-e679c00c2705.png",
     tagline: "Squalane & Argan Oil blend",
     description:
       "A nourishing face oil blend of Squalane and Argan Oil that strengthens the skin barrier and locks in hydration for a healthy, dewy glow.",
@@ -105,7 +105,7 @@ export const defaultProducts = [
     categoryAccent: "Purify & Balance",
     price: 28.99,
     originalPrice: 36.99,
-    image: "/images/432e42ab-30fd-4531-815a-e4ece090058b.png",
+    image: "https://res.cloudinary.com/bhozkz7o/image/upload/v1784381840/naya-glows/legacy/432e42ab-30fd-4531-815a-e4ece090058b.png",
     tagline: "Salicylic Acid pore cleanser",
     description:
       "A gentle daily foaming cleanser with Salicylic Acid that clears pores of excess oil and impurities without stripping the skin.",
@@ -118,7 +118,7 @@ export const defaultProducts = [
     categoryAccent: "Purify & Balance",
     price: 22.99,
     originalPrice: 28.99,
-    image: "/images/5d4e84fb-2a40-4b0c-ae19-62d695738a31.png",
+    image: "https://res.cloudinary.com/bhozkz7o/image/upload/v1784381842/naya-glows/legacy/5d4e84fb-2a40-4b0c-ae19-62d695738a31.png",
     tagline: "African Black Soap deep cleanse",
     description:
       "A traditional African Black Soap deep-cleanse bar that purifies skin and helps calm irritation, leaving skin feeling clean and balanced.",
@@ -131,7 +131,7 @@ export const defaultProducts = [
     categoryAccent: "Purify & Balance",
     price: 24.99,
     originalPrice: 32.99,
-    image: "/images/056bf54d-5022-45a9-861d-fa2a3620f4a3.png",
+    image: "https://res.cloudinary.com/bhozkz7o/image/upload/v1784381832/naya-glows/legacy/056bf54d-5022-45a9-861d-fa2a3620f4a3.png",
     tagline: "Balance & refine pores",
     description:
       "A refreshing toner that restores optimal skin pH, refines the look of pores, and preps skin to better absorb the treatments that follow.",
@@ -144,7 +144,7 @@ export const defaultProducts = [
     categoryAccent: "Glow & Nourish",
     price: 29.99,
     originalPrice: 39.99,
-    image: "/images/19ea7a51-adb2-4a49-bcb7-0bbc0116f4f2.png",
+    image: "https://res.cloudinary.com/bhozkz7o/image/upload/v1784381835/naya-glows/legacy/19ea7a51-adb2-4a49-bcb7-0bbc0116f4f2.png",
     tagline: "Kojic Acid & Lemon brightening",
     description:
       "A brightening body scrub with Kojic Acid and Lemon that gently exfoliates dead skin, smooths rough texture, and reveals a more even tone.",
@@ -157,7 +157,7 @@ export const defaultProducts = [
     categoryAccent: "Glow & Nourish",
     price: 24.99,
     originalPrice: 31.99,
-    image: "/images/2999b980-d234-482d-9e97-982f1bf1579a.png",
+    image: "https://res.cloudinary.com/bhozkz7o/image/upload/v1784381837/naya-glows/legacy/2999b980-d234-482d-9e97-982f1bf1579a.png",
     tagline: "Kaolin Clay daily cleanser",
     description:
       "A daily body wash with Kaolin Clay that gently draws out impurities while keeping skin soft, clean, and balanced.",
@@ -170,7 +170,7 @@ export const defaultProducts = [
     categoryAccent: "Glow & Nourish",
     price: 27.99,
     originalPrice: 35.99,
-    image: "/images/5bbe98ac-b9a9-40aa-95a1-ad2f9d7a2ce6.png",
+    image: "https://res.cloudinary.com/bhozkz7o/image/upload/v1784381841/naya-glows/legacy/5bbe98ac-b9a9-40aa-95a1-ad2f9d7a2ce6.png",
     tagline: "Tranexamic Acid & Vitamin C",
     description:
       "A repairing daily body lotion with Tranexamic Acid and Vitamin C that helps even skin tone and restore radiance from neck to toe.",
@@ -183,7 +183,7 @@ export const defaultProducts = [
     categoryAccent: "Glow & Nourish",
     price: 32.99,
     originalPrice: 42.99,
-    image: "/images/0323d23a-ed8d-4ab5-8f52-b8a8eb31e04f.png",
+    image: "https://res.cloudinary.com/bhozkz7o/image/upload/v1784381830/naya-glows/legacy/0323d23a-ed8d-4ab5-8f52-b8a8eb31e04f.png",
     tagline: "Argan & Sweet Almond Oil",
     description:
       "A fast-absorbing dry body oil blended with Argan and Sweet Almond Oil for a luminous, non-greasy glow from head to toe.",
