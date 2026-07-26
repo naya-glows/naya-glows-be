@@ -39,6 +39,18 @@ export function orderConfirmationEmail(order: {
   );
 }
 
+export function orderStatusUpdateEmail(order: { id: string }, stageLabel: string) {
+  return wrapper(
+    "Order Update",
+    `
+    <p>Good news — your Naya Glows order status just changed to:</p>
+    <p style="font-size:18px; font-weight:600; color:#4f7957; margin:12px 0;">${stageLabel}</p>
+    <p style="color:#16241a80; font-size:12px;">Order #${order.id}</p>
+    <p style="margin-top:24px;">You can check the full delivery timeline any time on our Track Order page.</p>
+  `,
+  );
+}
+
 export function consultationReceivedEmail(req: { name: string }) {
   return wrapper(
     "We've Got Your Request",

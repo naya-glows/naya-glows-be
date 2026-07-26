@@ -2,6 +2,9 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../lib/appError";
 import { getUsdToNgnRate, getSubscriptionDiscountPercent } from "../settings/settings.service";
+import { getTrackingStageLabel } from "./tracking";
+import { sendMail } from "../../lib/mailer";
+import { orderStatusUpdateEmail } from "../../lib/emailTemplates";
 
 const FREE_SHIPPING_THRESHOLD_USD = 75;
 const FLAT_SHIPPING_USD = 6;
@@ -92,6 +95,14 @@ export function listOrdersForAdmin() {
   });
 }
 
+export function listOrdersForUser(userId: string) {
+  return prisma.order.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    include: { items: { include: { product: { select: { name: true } } } } },
+  });
+}
+
 export function getOrderById(id: string) {
   return prisma.order.findUnique({
     where: { id },
@@ -99,6 +110,26 @@ export function getOrderById(id: string) {
   });
 }
 
-export function setOrderManualStage(id: string, manualStage: string | null) {
-  return prisma.order.update({ where: { id }, data: { manualStage } });
+export async function setOrderManualStage(id: string, manualStage: string | null) {
+  const existing = await prisma.order.findUnique({ where: { id } });
+  if (!existing) return null;
+
+  const order = await prisma.order.update({ where: { id }, data: { manualStage } });
+
+  // Only notify on an actual change to a real stage — not when the admin
+  // clears the override back to "Automatic" (nothing new to announce there).
+  if (manualStage && manualStage !== existing.manualStage) {
+    const shippingDetails = order.shippingDetails as { email?: string } | null;
+    const email = shippingDetails?.email;
+    const label = getTrackingStageLabel(manualStage);
+    if (email && label) {
+      await sendMail({
+        to: email,
+        subject: `Your Naya Glows order is now: ${label}`,
+        html: orderStatusUpdateEmail(order, label),
+      });
+    }
+  }
+
+  return order;
 }

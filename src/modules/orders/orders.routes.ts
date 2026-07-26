@@ -1,8 +1,14 @@
 import { Router } from "express";
 import { z } from "zod";
-import { createOrder, listOrdersForAdmin, getOrderById, setOrderManualStage } from "./orders.service";
+import {
+  createOrder,
+  listOrdersForAdmin,
+  listOrdersForUser,
+  getOrderById,
+  setOrderManualStage,
+} from "./orders.service";
 import { computeTracking, TRACKING_STAGE_KEYS } from "./tracking";
-import { optionalAuth, requireAdmin, type AuthedRequest } from "../../middleware/auth";
+import { optionalAuth, requireAuth, requireAdmin, type AuthedRequest } from "../../middleware/auth";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { AppError } from "../../lib/appError";
 
@@ -52,6 +58,17 @@ ordersRouter.post(
       if (err instanceof AppError) return res.status(400).json({ error: err.message });
       throw err;
     }
+  }),
+);
+
+// A logged-in customer's own order history — distinct from the public
+// email-verified /track/:id lookup below, which also serves guest orders.
+ordersRouter.get(
+  "/mine",
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const orders = await listOrdersForUser(req.auth!.userId);
+    res.json({ orders });
   }),
 );
 
@@ -110,6 +127,7 @@ adminOrdersRouter.put(
       return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
     }
     const order = await setOrderManualStage(req.params.id, parsed.data.stage);
+    if (!order) return res.status(404).json({ error: "Order not found" });
     res.json({ order });
   }),
 );

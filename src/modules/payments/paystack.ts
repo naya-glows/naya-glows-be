@@ -6,45 +6,6 @@ function getSecretKey(): string {
   return key;
 }
 
-type PaystackInitializeResponse = {
-  status: boolean;
-  message: string;
-  data: {
-    authorization_url: string;
-    access_code: string;
-    reference: string;
-  };
-};
-
-export async function initializeTransaction(input: {
-  email: string;
-  amountMinorUnits: number;
-  currency: string;
-  reference: string;
-  callbackUrl: string;
-}): Promise<PaystackInitializeResponse["data"]> {
-  const res = await fetch(`${PAYSTACK_BASE_URL}/transaction/initialize`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${getSecretKey()}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      email: input.email,
-      amount: input.amountMinorUnits,
-      currency: input.currency,
-      reference: input.reference,
-      callback_url: input.callbackUrl,
-    }),
-  });
-
-  const body = (await res.json()) as PaystackInitializeResponse;
-  if (!res.ok || !body.status) {
-    throw new Error(body.message || "Failed to initialize Paystack transaction");
-  }
-  return body.data;
-}
-
 type PaystackVerifyResponse = {
   status: boolean;
   message: string;

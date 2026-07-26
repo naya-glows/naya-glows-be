@@ -3,13 +3,16 @@ import { randomUUID } from "crypto";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma";
 import { asyncHandler } from "../../lib/asyncHandler";
-import { initializeTransaction } from "./paystack";
 import { confirmPaystackPayment } from "./payments.service";
 
 export const paymentsRouter = Router();
 
 const initializeSchema = z.object({ orderId: z.string().min(1) });
 
+// Creates the pending Payment row + a reference the frontend hands straight
+// to Paystack's Inline JS (no server-to-server "initialize transaction" call
+// needed for that flow — Inline opens its own modal/iframe directly from the
+// public key). The secret key is only ever used server-side, in `verify`.
 paymentsRouter.post(
   "/paystack/initialize",
   asyncHandler(async (req, res) => {
@@ -29,7 +32,6 @@ paymentsRouter.post(
     if (!email) return res.status(400).json({ error: "Order is missing a contact email" });
 
     const reference = `naya-${order.id}-${randomUUID()}`;
-    const frontendUrl = process.env.CORS_ORIGIN?.split(",")[0] ?? "http://localhost:3000";
 
     await prisma.payment.create({
       data: {
@@ -42,24 +44,7 @@ paymentsRouter.post(
       },
     });
 
-    try {
-      const data = await initializeTransaction({
-        email,
-        amountMinorUnits: Math.round(order.total * 100),
-        currency: order.currency,
-        reference,
-        callbackUrl: `${frontendUrl}/checkout/verify`,
-      });
-      res.json({ authorizationUrl: data.authorization_url, reference });
-    } catch (err) {
-      await prisma.payment.update({
-        where: { providerReference: reference },
-        data: { status: "FAILED" },
-      });
-      res.status(502).json({
-        error: err instanceof Error ? err.message : "Failed to start payment with Paystack",
-      });
-    }
+    res.json({ reference, email, amount: order.total, currency: order.currency });
   }),
 );
 

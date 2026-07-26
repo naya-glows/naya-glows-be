@@ -66,3 +66,7 @@ export function computeTracking(
 
 export const TRACKING_STAGE_KEYS = STAGE_DEFS.map((s) => s.key);
 
+export function getTrackingStageLabel(key: string): string | undefined {
+  return STAGE_DEFS.find((s) => s.key === key)?.label;
+}
+
