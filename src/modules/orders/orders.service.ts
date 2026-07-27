@@ -13,7 +13,12 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-export type OrderItemInput = { slug: string; qty: number; isSubscription?: boolean };
+export type OrderItemInput = {
+  slug: string;
+  qty: number;
+  isSubscription?: boolean;
+  variantName?: string;
+};
 
 export type ShippingDetails = {
   firstName: string;
@@ -29,7 +34,7 @@ export type ShippingDetails = {
 export async function createOrder(input: {
   items: OrderItemInput[];
   shippingDetails: ShippingDetails;
-  userId?: string;
+  userId: string;
 }) {
   const slugs = input.items.map((i) => i.slug);
   const [products, rate, discountPercent] = await Promise.all([
@@ -50,18 +55,35 @@ export async function createOrder(input: {
   const lineItems = input.items.map((item) => {
     const product = productBySlug.get(item.slug)!;
     const qty = Math.max(1, Math.floor(item.qty));
-    // Discount, like the base price, is always computed server-side from
-    // the product's real price and the admin-configured Setting — the
-    // client only signals *intent* to subscribe, never the resulting amount.
+
+    // Variant price, like the base price, is always resolved server-side
+    // from the product's own `variants` — the client only ever signals
+    // *which* variant it wants, never the resulting amount.
+    const variants = (product.variants as { name: string; price: number }[] | null) ?? [];
+    let basePrice = product.price;
+    if (variants.length > 0) {
+      const variant = variants.find((v) => v.name === item.variantName);
+      if (!variant) {
+        throw new AppError(
+          `Please select a valid size for "${product.name}".`,
+        );
+      }
+      basePrice = variant.price;
+    }
+
+    // Discount is always computed server-side from the resolved base price
+    // and the admin-configured Setting — the client only signals *intent*
+    // to subscribe, never the resulting amount.
     const unitPrice = item.isSubscription
-      ? round2(product.price * (1 - discountPercent / 100))
-      : product.price;
+      ? round2(basePrice * (1 - discountPercent / 100))
+      : basePrice;
     subtotalUsd += unitPrice * qty;
     return {
       productId: product.id,
       qty,
       price: unitPrice,
       isSubscription: Boolean(item.isSubscription),
+      variantName: variants.length > 0 ? item.variantName : undefined,
     };
   });
 

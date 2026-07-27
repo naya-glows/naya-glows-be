@@ -1,45 +1,35 @@
-import bcrypt from "bcryptjs";
 import { prisma } from "../../lib/prisma";
 import { signToken } from "../../lib/jwt";
-import { currencyForCountry } from "../../lib/currency";
 import { AppError } from "../../lib/appError";
 
-export async function registerInfluencer(input: {
-  email: string;
-  password: string;
-  name: string;
-  platform?: string;
-  socialHandle?: string;
-  bio?: string;
-}) {
-  const existing = await prisma.user.findUnique({ where: { email: input.email } });
-  if (existing) throw new AppError("An account with this email already exists");
+// An influencer is just a signed-in customer with an Influencer profile
+// appended and their role bumped — never a separate account. The caller
+// must already be authenticated (see the /influencers/upgrade route), so
+// this only ever adds a profile to an existing userId.
+export async function upgradeToInfluencer(
+  userId: string,
+  input: { platform?: string; socialHandle?: string; bio?: string },
+) {
+  const existing = await getInfluencerByUserId(userId);
+  if (existing) throw new AppError("This account is already part of the influencer program.");
 
-  const passwordHash = await bcrypt.hash(input.password, 10);
-
-  // A User row + its Influencer profile always exist together — created in
-  // one transaction so we never end up with one without the other.
+  // The Influencer profile and the role bump happen together so we never
+  // end up with one without the other.
   const user = await prisma.$transaction(async (tx) => {
-    const created = await tx.user.create({
-      data: {
-        email: input.email,
-        passwordHash,
-        name: input.name,
-        role: "INFLUENCER",
-        currency: currencyForCountry(undefined),
-      },
-    });
     await tx.influencer.create({
       data: {
-        userId: created.id,
+        userId,
         platform: input.platform,
         socialHandle: input.socialHandle,
         bio: input.bio,
       },
     });
-    return created;
+    return tx.user.update({ where: { id: userId }, data: { role: "INFLUENCER" } });
   });
 
+  // A fresh token is required — the caller's existing token still carries
+  // the old "CUSTOMER" role claim, which requireInfluencer checks directly
+  // without a DB lookup.
   const token = signToken({ userId: user.id, role: user.role });
   return { user, token };
 }

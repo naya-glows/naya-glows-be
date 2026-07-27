@@ -1,11 +1,11 @@
 import { Router } from "express";
 import { z } from "zod";
 import { asyncHandler } from "../../lib/asyncHandler";
-import { requireInfluencer, requireAdmin, type AuthedRequest } from "../../middleware/auth";
+import { requireAuth, requireInfluencer, requireAdmin, type AuthedRequest } from "../../middleware/auth";
 import { AppError } from "../../lib/appError";
 import { serializeUser } from "../auth/auth.service";
 import {
-  registerInfluencer,
+  upgradeToInfluencer,
   getInfluencerByUserId,
   generateReferralCode,
   listOwnReferralCodes,
@@ -14,24 +14,25 @@ import {
 
 export const influencersRouter = Router();
 
-const registerSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-  name: z.string().min(1),
+const upgradeSchema = z.object({
   platform: z.string().optional(),
   socialHandle: z.string().optional(),
   bio: z.string().optional(),
 });
 
+// Signed-in customers only — becoming an influencer never creates a second
+// account, it appends an Influencer profile to the one the caller is
+// already signed into (gated client-side by redirecting to /signin first).
 influencersRouter.post(
-  "/register",
-  asyncHandler(async (req, res) => {
-    const parsed = registerSchema.safeParse(req.body);
+  "/upgrade",
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const parsed = upgradeSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
     }
     try {
-      const { user, token } = await registerInfluencer(parsed.data);
+      const { user, token } = await upgradeToInfluencer(req.auth!.userId, parsed.data);
       res.status(201).json({ user: serializeUser(user), token });
     } catch (err) {
       if (err instanceof AppError) return res.status(400).json({ error: err.message });

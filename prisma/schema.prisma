@@ -69,6 +69,10 @@ model Product {
   tagline       String
   description   String
   benefits      String[]
+  // Optional size/variant pricing, e.g. [{"name":"Small","price":6.25},{"name":"Big","price":9.38}].
+  // When set, the storefront requires picking one and its price overrides
+  // the base `price` above; when null/empty the product is single-priced.
+  variants      Json?
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -144,6 +148,7 @@ model OrderItem {
   qty            Int
   price          Float
   isSubscription Boolean @default(false)
+  variantName    String?
 }
 
 model ConsultationRequest {

@@ -8,7 +8,7 @@ import {
   setOrderManualStage,
 } from "./orders.service";
 import { computeTracking, TRACKING_STAGE_KEYS } from "./tracking";
-import { optionalAuth, requireAuth, requireAdmin, type AuthedRequest } from "../../middleware/auth";
+import { requireAuth, requireAdmin, type AuthedRequest } from "../../middleware/auth";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { AppError } from "../../lib/appError";
 
@@ -30,6 +30,7 @@ const createOrderSchema = z.object({
         slug: z.string().min(1),
         qty: z.number().int().positive(),
         isSubscription: z.boolean().optional(),
+        variantName: z.string().optional(),
       }),
     )
     .min(1),
@@ -40,7 +41,7 @@ export const ordersRouter = Router();
 
 ordersRouter.post(
   "/",
-  optionalAuth,
+  requireAuth,
   asyncHandler(async (req: AuthedRequest, res) => {
     const parsed = createOrderSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -51,7 +52,7 @@ ordersRouter.post(
       const order = await createOrder({
         items: parsed.data.items,
         shippingDetails: parsed.data.shippingDetails,
-        userId: req.auth?.userId,
+        userId: req.auth!.userId,
       });
       res.status(201).json({ order });
     } catch (err) {

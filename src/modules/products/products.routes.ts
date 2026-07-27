@@ -40,6 +40,10 @@ const productSchema = z.object({
   tagline: z.string().min(1),
   description: z.string().min(1),
   benefits: z.array(z.string()),
+  variants: z
+    .array(z.object({ name: z.string().min(1), price: z.number().positive() }))
+    .nullable()
+    .optional(),
   isActive: z.boolean().optional(),
 });
 
