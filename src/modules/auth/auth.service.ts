@@ -9,9 +9,19 @@ export async function registerUser(input: {
   password: string;
   name: string;
   country?: string;
+  referralCode?: string;
 }) {
   const existing = await prisma.user.findUnique({ where: { email: input.email } });
   if (existing) throw new AppError("An account with this email already exists");
+
+  let referredByCodeId: string | undefined;
+  if (input.referralCode) {
+    const code = await prisma.referralCode.findUnique({
+      where: { code: input.referralCode.trim().toUpperCase() },
+    });
+    if (!code) throw new AppError("That referral code isn't valid");
+    referredByCodeId = code.id;
+  }
 
   const passwordHash = await bcrypt.hash(input.password, 10);
   const user = await prisma.user.create({
@@ -21,6 +31,7 @@ export async function registerUser(input: {
       name: input.name,
       country: input.country,
       currency: currencyForCountry(input.country),
+      referredByCodeId,
     },
   });
 

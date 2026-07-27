@@ -16,6 +16,7 @@ import { contactRouter, adminContactRouter } from "./modules/contact/contact.rou
 import { newsletterRouter, adminNewsletterRouter } from "./modules/newsletter/newsletter.routes";
 import { adminEmailCampaignsRouter } from "./modules/email-campaigns/email-campaigns.routes";
 import { adminBudgetRouter } from "./modules/budget/budget.routes";
+import { influencersRouter, adminInfluencersRouter } from "./modules/influencers/influencers.routes";
 
 export function createApp() {
   const app = express();
@@ -61,6 +62,8 @@ export function createApp() {
   app.use("/admin/newsletter-subscribers", adminNewsletterRouter);
   app.use("/admin/email-campaigns", adminEmailCampaignsRouter);
   app.use("/admin/budget", adminBudgetRouter);
+  app.use("/influencers", influencersRouter);
+  app.use("/admin/influencers", adminInfluencersRouter);
 
   app.use((_req, res) => {
     res.status(404).json({ error: "Not found" });

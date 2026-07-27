@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 
 export type JwtPayload = {
   userId: string;
-  role: "ADMIN" | "CUSTOMER";
+  role: "ADMIN" | "CUSTOMER" | "INFLUENCER";
 };
 
 function getSecret(): string {

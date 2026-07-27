@@ -28,6 +28,15 @@ export function requireAdmin(req: AuthedRequest, res: Response, next: NextFuncti
   });
 }
 
+export function requireInfluencer(req: AuthedRequest, res: Response, next: NextFunction) {
+  requireAuth(req, res, () => {
+    if (req.auth?.role !== "INFLUENCER") {
+      return res.status(403).json({ error: "Influencer access required" });
+    }
+    next();
+  });
+}
+
 // Attaches req.auth when a valid token is present, but never rejects —
 // used by routes that support both guest and signed-in flows (e.g. placing
 // an order).

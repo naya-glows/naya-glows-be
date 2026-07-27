@@ -13,6 +13,7 @@ const registerSchema = z.object({
   password: z.string().min(8),
   name: z.string().min(1),
   country: z.string().optional(),
+  referralCode: z.string().optional(),
 });
 
 router.post("/register", async (req, res) => {
