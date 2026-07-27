@@ -21,9 +21,25 @@ import { influencersRouter, adminInfluencersRouter } from "./modules/influencers
 export function createApp() {
   const app = express();
 
+  // CORS_ORIGIN must be the exact scheme+host(+port) of every frontend that
+  // calls this API (comma-separated for more than one, e.g. a production
+  // domain plus a Vercel preview URL) — a stray trailing space after a comma
+  // or a mismatched http/https or www would silently fail this exact-match
+  // check and the browser would block every request. Falling back to "*"
+  // (unset) works for now only because the frontend authenticates via a
+  // Bearer header rather than cookies (no credentialed requests), but it
+  // allows any site to call the public endpoints — set CORS_ORIGIN once a
+  // production frontend URL exists.
+  const allowedOrigins = process.env.CORS_ORIGIN?.split(",").map((o) => o.trim());
+  if (!allowedOrigins) {
+    console.warn(
+      "CORS_ORIGIN is not set — allowing all origins (*). Set it to your frontend's exact URL(s) before going live.",
+    );
+  }
+
   app.use(
     cors({
-      origin: process.env.CORS_ORIGIN?.split(",") ?? "*",
+      origin: allowedOrigins ?? "*",
       credentials: true,
     }),
   );
