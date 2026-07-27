@@ -35,6 +35,22 @@ model User {
   referredByCode    ReferralCode? @relation("ReferredSignups", fields: [referredByCodeId], references: [id])
 }
 
+// One row per (email, purpose) — a new request overwrites the previous code
+// rather than accumulating rows, so a resend always invalidates the prior
+// one. "SIGNUP" is the only purpose today; the field exists so the same
+// table can serve e.g. password-reset codes later without a migration.
+model EmailOtp {
+  id        String   @id @default(cuid())
+  email     String
+  purpose   String
+  code      String
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([email, purpose])
+}
+
 model Influencer {
   id           String   @id @default(cuid())
   userId       String   @unique

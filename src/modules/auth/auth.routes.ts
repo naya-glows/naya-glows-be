@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { registerUser, loginUser, serializeUser } from "./auth.service";
+import { registerUser, loginUser, requestSignupOtp, serializeUser } from "./auth.service";
 import { requireAuth, type AuthedRequest } from "../../middleware/auth";
 import { prisma } from "../../lib/prisma";
 import { asyncHandler } from "../../lib/asyncHandler";
@@ -8,12 +8,36 @@ import { AppError } from "../../lib/appError";
 
 const router = Router();
 
+const otpRequestSchema = z.object({ email: z.string().email() });
+
+// Step 1 of signup — emails a 6-digit code, creates nothing yet. Always
+// returns success (never reveals whether the address is already
+// registered) except for the one case the frontend needs to react to
+// differently: an existing account, which register() would reject anyway.
+router.post(
+  "/otp/request",
+  asyncHandler(async (req, res) => {
+    const parsed = otpRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
+    }
+    try {
+      await requestSignupOtp(parsed.data.email);
+      res.json({ sent: true });
+    } catch (err) {
+      if (err instanceof AppError) return res.status(400).json({ error: err.message });
+      throw err;
+    }
+  }),
+);
+
 const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   name: z.string().min(1),
   country: z.string().optional(),
   referralCode: z.string().optional(),
+  otpCode: z.string().length(6),
 });
 
 router.post("/register", async (req, res) => {

@@ -11,6 +11,17 @@ export const wrapper = (title: string, body: string) => `
   </div>
 </div>`;
 
+export function signupOtpEmail(code: string) {
+  return wrapper(
+    "Verify Your Email",
+    `
+    <p>Welcome to Naya Glows! Use the code below to verify your email and finish creating your account.</p>
+    <p style="font-size:32px; font-weight:700; letter-spacing:0.25em; text-align:center; color:#16241a; background:#f4faf3; border-radius:12px; padding:16px; margin:20px 0;">${code}</p>
+    <p style="color:#16241a80; font-size:12px;">This code expires in 10 minutes. If you didn't request this, you can safely ignore this email.</p>
+  `,
+  );
+}
+
 export function orderConfirmationEmail(order: {
   id: string;
   currency: string;
