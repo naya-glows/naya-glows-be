@@ -1,6 +1,15 @@
 import { Router } from "express";
 import { z } from "zod";
-import { registerUser, loginUser, requestSignupOtp, serializeUser } from "./auth.service";
+import {
+  registerUser,
+  loginUser,
+  requestSignupOtp,
+  updateProfile,
+  changePassword,
+  requestPasswordReset,
+  resetPassword,
+  serializeUser,
+} from "./auth.service";
 import { requireAuth, type AuthedRequest } from "../../middleware/auth";
 import { prisma } from "../../lib/prisma";
 import { asyncHandler } from "../../lib/asyncHandler";
@@ -51,7 +60,7 @@ router.post("/register", async (req, res) => {
     res.status(201).json({ user: serializeUser(user), token });
   } catch (err) {
     if (err instanceof AppError) return res.status(400).json({ error: err.message });
-    console.error(err);
+    console.error(`[error] POST /auth/register — email=${parsed.data.email}`, err);
     res.status(500).json({ error: "Registration failed. Please try again." });
   }
 });
@@ -72,7 +81,7 @@ router.post("/login", async (req, res) => {
     res.json({ user: serializeUser(user), token });
   } catch (err) {
     if (err instanceof AppError) return res.status(401).json({ error: err.message });
-    console.error(err);
+    console.error(`[error] POST /auth/login — email=${parsed.data.email}`, err);
     res.status(500).json({ error: "Login failed. Please try again." });
   }
 });
@@ -84,6 +93,99 @@ router.get(
     const user = await prisma.user.findUnique({ where: { id: req.auth!.userId } });
     if (!user) return res.status(404).json({ error: "User not found" });
     res.json({ user: serializeUser(user) });
+  }),
+);
+
+const updateProfileSchema = z.object({
+  name: z.string().min(1).optional(),
+  email: z.string().email().optional(),
+  country: z.string().optional(),
+});
+
+router.patch(
+  "/me",
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const parsed = updateProfileSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
+    }
+    try {
+      const user = await updateProfile(req.auth!.userId, parsed.data);
+      res.json({ user: serializeUser(user) });
+    } catch (err) {
+      if (err instanceof AppError) return res.status(400).json({ error: err.message });
+      throw err;
+    }
+  }),
+);
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8),
+});
+
+router.patch(
+  "/me/password",
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const parsed = changePasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
+    }
+    try {
+      await changePassword(req.auth!.userId, parsed.data.currentPassword, parsed.data.newPassword);
+      res.json({ ok: true });
+    } catch (err) {
+      if (err instanceof AppError) return res.status(400).json({ error: err.message });
+      throw err;
+    }
+  }),
+);
+
+const passwordResetRequestSchema = z.object({ email: z.string().email() });
+
+// Always returns success regardless of whether the email has an account —
+// otherwise this endpoint could be used to check which emails are registered.
+router.post(
+  "/password-reset/request",
+  asyncHandler(async (req, res) => {
+    const parsed = passwordResetRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
+    }
+    try {
+      await requestPasswordReset(parsed.data.email);
+    } catch (err) {
+      if (!(err instanceof AppError)) throw err;
+      // A resend-cooldown AppError is the one case worth surfacing — it's
+      // not an account-existence leak, just rate limiting.
+      return res.status(400).json({ error: err.message });
+    }
+    res.json({ sent: true });
+  }),
+);
+
+const passwordResetConfirmSchema = z.object({
+  email: z.string().email(),
+  otpCode: z.string().length(6),
+  newPassword: z.string().min(8),
+});
+
+router.post(
+  "/password-reset/confirm",
+  asyncHandler(async (req, res) => {
+    const parsed = passwordResetConfirmSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
+    }
+    try {
+      await resetPassword(parsed.data.email, parsed.data.otpCode, parsed.data.newPassword);
+      res.json({ ok: true });
+    } catch (err) {
+      if (err instanceof AppError) return res.status(400).json({ error: err.message });
+      throw err;
+    }
   }),
 );
 

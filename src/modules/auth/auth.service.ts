@@ -4,9 +4,10 @@ import { signToken } from "../../lib/jwt";
 import { currencyForCountry } from "../../lib/currency";
 import { AppError } from "../../lib/appError";
 import { sendMail } from "../../lib/mailer";
-import { signupOtpEmail } from "../../lib/emailTemplates";
+import { signupOtpEmail, passwordResetOtpEmail, welcomeEmail } from "../../lib/emailTemplates";
 
 const SIGNUP_OTP_PURPOSE = "SIGNUP";
+const RESET_OTP_PURPOSE = "RESET_PASSWORD";
 const OTP_TTL_MS = 10 * 60 * 1000;
 const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
 const OTP_MAX_ATTEMPTS = 5;
@@ -15,15 +16,11 @@ function generateOtpCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// Step 1 of signup: emails a 6-digit code and stashes it against the email,
-// but creates nothing yet — the account itself is only created once that
-// code comes back correct in registerUser below.
-export async function requestSignupOtp(email: string) {
-  const existingUser = await prisma.user.findUnique({ where: { email } });
-  if (existingUser) throw new AppError("An account with this email already exists");
-
+// Shared by both signup verification and password-reset codes — one row
+// per (email, purpose), a new request overwrites the previous code.
+async function createAndSendOtp(email: string, purpose: string, subject: string, html: (code: string) => string) {
   const existingOtp = await prisma.emailOtp.findUnique({
-    where: { email_purpose: { email, purpose: SIGNUP_OTP_PURPOSE } },
+    where: { email_purpose: { email, purpose } },
   });
   if (existingOtp && Date.now() - existingOtp.createdAt.getTime() < OTP_RESEND_COOLDOWN_MS) {
     throw new AppError("Please wait a moment before requesting another code.");
@@ -31,21 +28,17 @@ export async function requestSignupOtp(email: string) {
 
   const code = generateOtpCode();
   await prisma.emailOtp.upsert({
-    where: { email_purpose: { email, purpose: SIGNUP_OTP_PURPOSE } },
-    create: { email, purpose: SIGNUP_OTP_PURPOSE, code, expiresAt: new Date(Date.now() + OTP_TTL_MS) },
+    where: { email_purpose: { email, purpose } },
+    create: { email, purpose, code, expiresAt: new Date(Date.now() + OTP_TTL_MS) },
     update: { code, attempts: 0, expiresAt: new Date(Date.now() + OTP_TTL_MS), createdAt: new Date() },
   });
 
-  await sendMail({
-    to: email,
-    subject: "Your Naya Glows verification code",
-    html: signupOtpEmail(code),
-  });
+  await sendMail({ to: email, subject, html: html(code) });
 }
 
-async function verifyAndConsumeSignupOtp(email: string, code: string) {
+async function verifyAndConsumeOtp(email: string, purpose: string, code: string) {
   const row = await prisma.emailOtp.findUnique({
-    where: { email_purpose: { email, purpose: SIGNUP_OTP_PURPOSE } },
+    where: { email_purpose: { email, purpose } },
   });
   if (!row) throw new AppError("Please request a new verification code.");
 
@@ -65,6 +58,41 @@ async function verifyAndConsumeSignupOtp(email: string, code: string) {
   await prisma.emailOtp.delete({ where: { id: row.id } });
 }
 
+// Step 1 of signup: emails a 6-digit code and stashes it against the email,
+// but creates nothing yet — the account itself is only created once that
+// code comes back correct in registerUser below.
+export async function requestSignupOtp(email: string) {
+  const existingUser = await prisma.user.findUnique({ where: { email } });
+  if (existingUser) throw new AppError("An account with this email already exists");
+
+  await createAndSendOtp(email, SIGNUP_OTP_PURPOSE, "Your Naya Glows verification code", signupOtpEmail);
+}
+
+// Deliberately does NOT reveal whether the email has an account — always
+// "succeeds" from the caller's perspective; if there's no account, requestPasswordReset
+// below just skips sending anything.
+export async function requestPasswordReset(email: string) {
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) return;
+
+  await createAndSendOtp(
+    email,
+    RESET_OTP_PURPOSE,
+    "Reset your Naya Glows password",
+    passwordResetOtpEmail,
+  );
+}
+
+export async function resetPassword(email: string, code: string, newPassword: string) {
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) throw new AppError("Incorrect code. Please try again.");
+
+  await verifyAndConsumeOtp(email, RESET_OTP_PURPOSE, code);
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
+}
+
 export async function registerUser(input: {
   email: string;
   password: string;
@@ -76,7 +104,7 @@ export async function registerUser(input: {
   const existing = await prisma.user.findUnique({ where: { email: input.email } });
   if (existing) throw new AppError("An account with this email already exists");
 
-  await verifyAndConsumeSignupOtp(input.email, input.otpCode);
+  await verifyAndConsumeOtp(input.email, SIGNUP_OTP_PURPOSE, input.otpCode);
 
   let referredByCodeId: string | undefined;
   if (input.referralCode) {
@@ -100,6 +128,15 @@ export async function registerUser(input: {
   });
 
   const token = signToken({ userId: user.id, role: user.role });
+
+  // Fire-and-forget: a welcome email failing to send shouldn't fail the
+  // signup itself, the account is already created at this point.
+  sendMail({
+    to: user.email,
+    subject: "Welcome to Naya Glows",
+    html: welcomeEmail(user.name),
+  }).catch((err) => console.error("[auth] Failed to send welcome email:", err));
+
   return { user, token };
 }
 
@@ -112,6 +149,43 @@ export async function loginUser(email: string, password: string) {
 
   const token = signToken({ userId: user.id, role: user.role });
   return { user, token };
+}
+
+export async function updateProfile(
+  userId: string,
+  input: { name?: string; email?: string; country?: string },
+) {
+  if (input.email) {
+    const existing = await prisma.user.findUnique({ where: { email: input.email } });
+    if (existing && existing.id !== userId) {
+      throw new AppError("That email is already in use by another account");
+    }
+  }
+
+  return prisma.user.update({
+    where: { id: userId },
+    data: {
+      name: input.name,
+      email: input.email,
+      country: input.country,
+      currency: input.country ? currencyForCountry(input.country) : undefined,
+    },
+  });
+}
+
+export async function changePassword(
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new AppError("User not found");
+
+  const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!valid) throw new AppError("Current password is incorrect");
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
 }
 
 export function serializeUser(user: {

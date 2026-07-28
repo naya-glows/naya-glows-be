@@ -22,6 +22,45 @@ export function signupOtpEmail(code: string) {
   );
 }
 
+export function cartReminderEmail(name: string, items: { name: string; qty: number }[]) {
+  const rows = items
+    .map((i) => `<li style="margin-bottom:6px;">${i.name} × ${i.qty}</li>`)
+    .join("");
+
+  return wrapper(
+    "You Left Something Behind",
+    `
+    <p>Hi ${name}, you still have items waiting in your Naya Glows cart:</p>
+    <ul style="padding-left:20px; margin:16px 0;">${rows}</ul>
+    <p>They won't wait forever — come back and finish checking out whenever you're ready.</p>
+    <p style="margin-top:24px;">
+      <a href="https://nayaglows.com.ng/cart" style="display:inline-block; background:#16241a; color:#fff; text-decoration:none; padding:12px 24px; border-radius:999px; font-weight:600; font-size:13px;">View Your Cart</a>
+    </p>
+  `,
+  );
+}
+
+export function welcomeEmail(name: string) {
+  return wrapper(
+    "You're In!",
+    `
+    <p>Hi ${name}, welcome to Naya Glows — your email is verified and your account is ready to go.</p>
+    <p>Browse the catalog, save your favorites, and track every order from your account page any time.</p>
+  `,
+  );
+}
+
+export function passwordResetOtpEmail(code: string) {
+  return wrapper(
+    "Reset Your Password",
+    `
+    <p>Use the code below to reset your Naya Glows password.</p>
+    <p style="font-size:32px; font-weight:700; letter-spacing:0.25em; text-align:center; color:#16241a; background:#f4faf3; border-radius:12px; padding:16px; margin:20px 0;">${code}</p>
+    <p style="color:#16241a80; font-size:12px;">This code expires in 10 minutes. If you didn't request this, you can safely ignore this email — your password won't change.</p>
+  `,
+  );
+}
+
 export function orderConfirmationEmail(order: {
   id: string;
   currency: string;

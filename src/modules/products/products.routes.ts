@@ -45,6 +45,7 @@ const productSchema = z.object({
     .nullable()
     .optional(),
   isActive: z.boolean().optional(),
+  inStock: z.boolean().optional(),
 });
 
 router.post(

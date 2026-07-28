@@ -17,6 +17,8 @@ import { newsletterRouter, adminNewsletterRouter } from "./modules/newsletter/ne
 import { adminEmailCampaignsRouter } from "./modules/email-campaigns/email-campaigns.routes";
 import { adminBudgetRouter } from "./modules/budget/budget.routes";
 import { influencersRouter, adminInfluencersRouter } from "./modules/influencers/influencers.routes";
+import { cartRouter } from "./modules/cart/cart.routes";
+import type { AuthedRequest } from "./middleware/auth";
 
 export function createApp() {
   const app = express();
@@ -80,6 +82,7 @@ export function createApp() {
   app.use("/admin/budget", adminBudgetRouter);
   app.use("/influencers", influencersRouter);
   app.use("/admin/influencers", adminInfluencersRouter);
+  app.use("/cart", cartRouter);
 
   app.use((_req, res) => {
     res.status(404).json({ error: "Not found" });
@@ -87,9 +90,14 @@ export function createApp() {
 
   // Final safety net: any error forwarded via next(err) (including from
   // asyncHandler-wrapped routes) lands here as a 500 instead of crashing
-  // the process.
-  const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
-    console.error(err);
+  // the process. Logs which request/user hit it — the only way to
+  // investigate a production error afterwards is this Railway log line,
+  // there's no other error tracking wired up.
+  const errorHandler: ErrorRequestHandler = (err, req: AuthedRequest, res, _next) => {
+    console.error(
+      `[error] ${req.method} ${req.originalUrl} — user=${req.auth?.userId ?? "anonymous"} role=${req.auth?.role ?? "none"}`,
+      err,
+    );
     res.status(500).json({ error: "Internal server error" });
   };
   app.use(errorHandler);

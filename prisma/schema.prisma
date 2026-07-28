@@ -26,6 +26,7 @@ model User {
 
   orders        Order[]
   savedProducts SavedProduct[]
+  cart          Cart?
 
   // Present only on INFLUENCER-role users.
   influencer Influencer?
@@ -49,6 +50,21 @@ model EmailOtp {
   createdAt DateTime @default(now())
 
   @@unique([email, purpose])
+}
+
+// A signed-in customer's cart, mirrored server-side purely so the backend
+// can know what's in it — the frontend (cartSlice.ts) remains the actual
+// source of truth for the live shopping experience; this is a snapshot
+// synced on every change, used only to find abandoned carts to email about.
+model Cart {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id])
+  items          Json
+  updatedAt      DateTime  @updatedAt
+  // Reset to null whenever items change, so a new abandonment period can
+  // trigger a fresh reminder rather than firing only once ever.
+  reminderSentAt DateTime?
 }
 
 model Influencer {
@@ -90,6 +106,7 @@ model Product {
   // the base `price` above; when null/empty the product is single-priced.
   variants      Json?
   isActive      Boolean  @default(true)
+  inStock       Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

@@ -35,6 +35,7 @@ export type ProductInput = {
   benefits: string[];
   variants?: ProductVariant[] | null;
   isActive?: boolean;
+  inStock?: boolean;
 };
 
 export function createProduct(input: ProductInput) {
