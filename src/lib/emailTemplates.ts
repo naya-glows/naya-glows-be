@@ -89,6 +89,70 @@ export function orderConfirmationEmail(order: {
   );
 }
 
+export function subscriptionCodeEmail(items: { name: string; code: string }[]) {
+  const rows = items
+    .map(
+      (i) => `
+      <div style="background:#f4faf3; border-radius:12px; padding:16px; margin-bottom:12px;">
+        <p style="margin:0 0 6px; font-weight:600;">${i.name}</p>
+        <p style="margin:0; font-size:24px; font-weight:700; letter-spacing:0.15em; color:#16241a;">${i.code}</p>
+      </div>`,
+    )
+    .join("");
+
+  return wrapper(
+    "You've Unlocked a Reorder Discount",
+    `
+    <p>Thanks for shopping with Naya Glows! Since you've now bought the product(s) below, you've unlocked a standing discount on every future reorder — no code needed at checkout, it's applied automatically to your account. Keep the code(s) below for your records, or reference them if you're ordering with us directly.</p>
+    ${rows}
+    <p style="color:#16241a80; font-size:12px; margin-top:16px;">This discount stays active for as long as you keep this account, on every future purchase of these products.</p>
+  `,
+  );
+}
+
+export function subscriptionPlanConfirmationEmail(plan: {
+  termLabel: string;
+  totalPaid: number;
+  currency: string;
+  fulfillmentMode: string;
+  items: { name: string; qtyPerMonth: number }[];
+}) {
+  const rows = plan.items
+    .map((i) => `<li style="margin-bottom:6px;">${i.name} — ${i.qtyPerMonth}/month</li>`)
+    .join("");
+
+  return wrapper(
+    "Your Subscribe & Save Plan Is Confirmed",
+    `
+    <p>You're all set on your ${plan.termLabel} Subscribe &amp; Save plan — thank you for choosing to stick with Naya Glows!</p>
+    <ul style="padding-left:20px; margin:16px 0;">${rows}</ul>
+    <p style="font-weight:600;">Total paid: ${plan.currency} ${plan.totalPaid.toLocaleString()}</p>
+    <p style="margin-top:16px;">
+      ${
+        plan.fulfillmentMode === "recurring"
+          ? "Your first shipment is on its way now, and we'll automatically send the next one each month for the rest of your plan — no further action needed from you."
+          : "Your full order for this plan is on its way now, all at once."
+      }
+    </p>
+  `,
+  );
+}
+
+export function subscriptionShipmentEmail(termLabel: string, items: { name: string; qty: number }[]) {
+  const rows = items
+    .map((i) => `<li style="margin-bottom:6px;">${i.name} × ${i.qty}</li>`)
+    .join("");
+
+  return wrapper(
+    "Your Next Shipment Is On Its Way",
+    `
+    <p>This month's shipment from your ${termLabel} Subscribe &amp; Save plan is being prepared:</p>
+    <ul style="padding-left:20px; margin:16px 0;">${rows}</ul>
+    <p style="color:#16241a80; font-size:12px;">Already paid for as part of your plan — nothing further to do.</p>
+  `,
+  );
+}
+
 export function orderStatusUpdateEmail(order: { id: string }, stageLabel: string) {
   return wrapper(
     "Order Update",

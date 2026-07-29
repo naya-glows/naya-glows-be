@@ -23,6 +23,7 @@ const sendSchema = z.object({
   // Cloudinary URLs from the same /uploads endpoint products use — never
   // raw HTML/attachments, so there's still no way to send a broken email.
   imageUrls: z.array(z.string().url()).max(6).optional(),
+  audience: z.enum(["subscribers", "allUsers"]).default("subscribers"),
 });
 
 adminEmailCampaignsRouter.post(
@@ -34,7 +35,10 @@ adminEmailCampaignsRouter.post(
       return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
     }
 
-    const subscribers = await prisma.newsletterSubscriber.findMany({ select: { email: true } });
+    const recipients =
+      parsed.data.audience === "allUsers"
+        ? await prisma.user.findMany({ select: { email: true } })
+        : await prisma.newsletterSubscriber.findMany({ select: { email: true } });
     const imagesHtml = (parsed.data.imageUrls ?? [])
       .map(
         (url) =>
@@ -53,14 +57,14 @@ adminEmailCampaignsRouter.post(
     // logged per recipient instead of silently reported as "sent".
     let sentCount = 0;
     const failedEmails: string[] = [];
-    for (const subscriber of subscribers) {
-      const ok = await sendMail({ to: subscriber.email, subject: parsed.data.subject, html });
+    for (const recipient of recipients) {
+      const ok = await sendMail({ to: recipient.email, subject: parsed.data.subject, html });
       if (ok) sentCount += 1;
-      else failedEmails.push(subscriber.email);
+      else failedEmails.push(recipient.email);
     }
     if (failedEmails.length > 0) {
       console.error(
-        `[email-campaigns] "${parsed.data.subject}" failed to send to ${failedEmails.length}/${subscribers.length} recipient(s): ${failedEmails.join(", ")}`,
+        `[email-campaigns] "${parsed.data.subject}" failed to send to ${failedEmails.length}/${recipients.length} recipient(s): ${failedEmails.join(", ")}`,
       );
     }
 
@@ -68,7 +72,8 @@ adminEmailCampaignsRouter.post(
       data: {
         subject: parsed.data.subject,
         html,
-        recipientCount: subscribers.length,
+        recipientCount: recipients.length,
+        audience: parsed.data.audience,
       },
     });
 

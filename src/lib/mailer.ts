@@ -1,13 +1,39 @@
 import nodemailer from "nodemailer";
+import { promises as dns } from "dns";
 
 let transport: nodemailer.Transporter | null = null;
 
-function getTransport(): nodemailer.Transporter | null {
+// Nodemailer resolves smtp.gmail.com to BOTH its IPv4 and IPv6 addresses
+// and then connects to a *random* one of them (see formatDNSValue in
+// nodemailer/lib/shared/index.js) — it doesn't actually prefer IPv4 the
+// way "IPv4 first" in its own address-ordering comment implies. On this
+// Railway container, which has no real IPv6 route out, that coin flip
+// sometimes lands on the IPv6 address and fails instantly (ENETUNREACH),
+// and other times lands on an IPv4 address (which hit a *different*
+// failure, ETIMEDOUT, likely Gmail-side). Resolving to a specific IPv4
+// address ourselves and handing nodemailer that literal IP bypasses its
+// own hostname resolution entirely (resolveHostname short-circuits via
+// net.isIP when host is already an IP), removing the randomness for good.
+// `servername` keeps TLS validating against the real hostname, since the
+// certificate is issued for smtp.gmail.com, not a bare IP.
+async function getTransport(): Promise<nodemailer.Transporter | null> {
   if (!process.env.SMTP_HOST) return null;
   if (transport) return transport;
 
+  let host: string = process.env.SMTP_HOST;
+  try {
+    const addresses = await dns.resolve4(process.env.SMTP_HOST);
+    if (addresses.length > 0) host = addresses[0];
+  } catch (err) {
+    console.warn(
+      `[mailer] Couldn't resolve ${process.env.SMTP_HOST} to an IPv4 address, falling back to hostname resolution:`,
+      err,
+    );
+  }
+
   transport = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
+    host,
+    tls: { servername: process.env.SMTP_HOST },
     port: Number(process.env.SMTP_PORT) || 587,
     secure: process.env.SMTP_SECURE === "true",
     auth: process.env.SMTP_USER
@@ -35,7 +61,7 @@ function getTransport(): nodemailer.Transporter | null {
 // silently) so callers sending to multiple recipients — e.g. email
 // campaigns — can report real delivery counts instead of a blind "sent".
 export async function sendMail(opts: { to: string; subject: string; html: string }): Promise<boolean> {
-  const t = getTransport();
+  const t = await getTransport();
   if (!t) {
     console.log(`[mailer] SMTP not configured — skipped "${opts.subject}" to ${opts.to}`);
     return false;

@@ -27,6 +27,8 @@ model User {
   orders        Order[]
   savedProducts SavedProduct[]
   cart          Cart?
+  productSubscriptions ProductSubscription[]
+  subscriptionPlans    SubscriptionPlan[]
 
   // Present only on INFLUENCER-role users.
   influencer Influencer?
@@ -112,6 +114,7 @@ model Product {
 
   orderItems    OrderItem[]
   savedByUsers  SavedProduct[]
+  subscriptions ProductSubscription[]
 }
 
 model SavedProduct {
@@ -168,6 +171,12 @@ model Order {
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
+  // Set on the original prepay order AND every later auto-created monthly
+  // shipment order for a "recurring" Subscription B plan — lets the admin
+  // trace every shipment back to the plan it belongs to.
+  subscriptionPlanId String?
+  subscriptionPlan   SubscriptionPlan? @relation(fields: [subscriptionPlanId], references: [id])
+
   items    OrderItem[]
   payments Payment[]
 }
@@ -182,6 +191,73 @@ model OrderItem {
   price          Float
   isSubscription Boolean @default(false)
   variantName    String?
+}
+
+// "Subscription A" — a standing, reusable discount unlocked on ONE specific
+// product once the customer has bought it at full price. Applied via the
+// `code` at checkout (not auto-detected from the account) so it works
+// identically for a web order or an Instagram DM order a staff member
+// enters manually — the code is the one thing that travels across both
+// channels. Reusable indefinitely, not single-use: "every purchase after
+// the first one" per the business rule this implements.
+model ProductSubscription {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id])
+  code            String   @unique
+  discountPercent Float
+  // The order that qualified the customer for this (their first, full-price
+  // purchase of this product) — informational, not required for redemption.
+  firstOrderId    String?
+  createdAt       DateTime @default(now())
+
+  @@unique([userId, productId])
+}
+
+enum SubscriptionTerm {
+  THREE_MONTH
+  SIX_MONTH
+  TWELVE_MONTH
+}
+
+enum SubscriptionPlanStatus {
+  ACTIVE
+  CANCELLED
+  COMPLETED
+}
+
+// "Subscription B" — a prepaid multi-month plan (3/6/12 months) at a
+// bigger, term-scaled discount, charged as one upfront payment. Both
+// `fulfillmentMode` and `discountPercent` are snapshotted from the admin's
+// settings at the moment of purchase, so a later admin change never
+// retroactively alters an already-active plan.
+model SubscriptionPlan {
+  id      String           @id @default(cuid())
+  userId  String
+  user    User             @relation(fields: [userId], references: [id])
+  term    SubscriptionTerm
+  // "immediate" (the whole term ships in this one order) or "recurring"
+  // (ships one month at a time — see jobs/subscriptionShipments.ts).
+  fulfillmentMode String
+  // [{ slug, name, qtyPerMonth }] — what they subscribed to and at what
+  // monthly quantity; the basis for the cost/discount calculation.
+  items              Json
+  discountPercent    Float
+  totalPaid          Float
+  status             SubscriptionPlanStatus @default(ACTIVE)
+  // The Order that captured the upfront payment (for "immediate", also the
+  // order carrying the full shipped quantity).
+  orderId            String?
+  // Only meaningful for "recurring": how many more monthly shipments are
+  // owed, and when the next one is due. Both null/0 for "immediate".
+  remainingShipments Int                    @default(0)
+  nextShipmentDate   DateTime?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  orders Order[]
 }
 
 model ConsultationRequest {
@@ -229,6 +305,9 @@ model EmailCampaign {
   subject        String
   html           String
   recipientCount Int
+  // "subscribers" (newsletter opt-ins) or "allUsers" (every registered
+  // account) — which list this send actually went to.
+  audience       String   @default("subscribers")
   createdAt      DateTime @default(now())
 }
 

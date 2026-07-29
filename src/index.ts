@@ -4,6 +4,7 @@ import { prisma } from "./lib/prisma";
 import { runSeed } from "./lib/runSeed";
 import { runAbandonedCartReminders } from "./jobs/cartReminders";
 import { syncUsdToNgnRate } from "./jobs/fxRateSync";
+import { runSubscriptionShipments } from "./jobs/subscriptionShipments";
 
 const port = Number(process.env.PORT) || 4000;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -56,6 +57,14 @@ async function main() {
   syncUsdToNgnRate().catch((err) => console.error("[fx-rate] Initial sync failed:", err));
   setInterval(() => {
     syncUsdToNgnRate().catch((err) => console.error("[fx-rate] Run failed:", err));
+  }, ONE_DAY_MS);
+
+  // Checked daily, acts only on plans whose nextShipmentDate has actually
+  // arrived — see jobs/subscriptionShipments.ts.
+  setInterval(() => {
+    runSubscriptionShipments().catch((err) =>
+      console.error("[subscription-shipments] Run failed:", err),
+    );
   }, ONE_DAY_MS);
 }
 

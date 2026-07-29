@@ -1,10 +1,10 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../lib/appError";
-import { getSubscriptionDiscountPercent } from "../settings/settings.service";
 import { getTrackingStageLabel } from "./tracking";
 import { sendMail } from "../../lib/mailer";
 import { orderStatusUpdateEmail } from "../../lib/emailTemplates";
+import { getMyActiveProductSubscriptionsByProductId } from "../subscriptions/productSubscriptions.service";
 
 // Naira is the canonical unit Product.price/originalPrice/variants[].price
 // are stored in — Paystack charges NGN and the admin's real price list is
@@ -42,9 +42,9 @@ export async function createOrder(input: {
   userId: string;
 }) {
   const slugs = input.items.map((i) => i.slug);
-  const [products, discountPercent] = await Promise.all([
+  const [products, standingSubscriptionsByProductId] = await Promise.all([
     prisma.product.findMany({ where: { slug: { in: slugs } } }),
-    getSubscriptionDiscountPercent(),
+    getMyActiveProductSubscriptionsByProductId(input.userId),
   ]);
   const productBySlug = new Map(products.map((p) => [p.slug, p]));
 
@@ -75,18 +75,22 @@ export async function createOrder(input: {
       basePrice = variant.price;
     }
 
-    // Discount is always computed server-side from the resolved base price
-    // and the admin-configured Setting — the client only signals *intent*
-    // to subscribe, never the resulting amount.
-    const unitPrice = item.isSubscription
-      ? round2(basePrice * (1 - discountPercent / 100))
-      : basePrice;
+    // "Subscription A" — a standing, reusable discount on THIS specific
+    // product, unlocked once the customer already has a ProductSubscription
+    // row for it (created after their qualifying first, full-price
+    // purchase — see payments.service.ts). Auto-applied here, no code entry
+    // needed on the site; `item.isSubscription` below is a different thing
+    // entirely — it's this order's *intent* to enroll (only meaningful when
+    // no standing subscription exists yet, i.e. this IS the qualifying
+    // first purchase, which is deliberately never discounted).
+    const standing = standingSubscriptionsByProductId.get(product.id);
+    const unitPrice = standing ? round2(basePrice * (1 - standing.discountPercent / 100)) : basePrice;
     subtotal += unitPrice * qty;
     return {
       productId: product.id,
       qty,
       price: unitPrice,
-      isSubscription: Boolean(item.isSubscription),
+      isSubscription: Boolean(item.isSubscription) && !standing,
       variantName: variants.length > 0 ? item.variantName : undefined,
     };
   });
