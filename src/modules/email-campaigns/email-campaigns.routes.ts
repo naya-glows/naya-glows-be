@@ -48,8 +48,20 @@ adminEmailCampaignsRouter.post(
 
     // Sequential, not Promise.all — keeps this from hammering the SMTP
     // provider with a burst of concurrent connections on larger lists.
+    // sendMail's return is checked (not just awaited-and-ignored) so a
+    // provider-side failure — e.g. a connection timeout — is counted and
+    // logged per recipient instead of silently reported as "sent".
+    let sentCount = 0;
+    const failedEmails: string[] = [];
     for (const subscriber of subscribers) {
-      await sendMail({ to: subscriber.email, subject: parsed.data.subject, html });
+      const ok = await sendMail({ to: subscriber.email, subject: parsed.data.subject, html });
+      if (ok) sentCount += 1;
+      else failedEmails.push(subscriber.email);
+    }
+    if (failedEmails.length > 0) {
+      console.error(
+        `[email-campaigns] "${parsed.data.subject}" failed to send to ${failedEmails.length}/${subscribers.length} recipient(s): ${failedEmails.join(", ")}`,
+      );
     }
 
     const campaign = await prisma.emailCampaign.create({
@@ -60,6 +72,6 @@ adminEmailCampaignsRouter.post(
       },
     });
 
-    res.status(201).json({ campaign });
+    res.status(201).json({ campaign, sentCount, failedCount: failedEmails.length });
   }),
 );

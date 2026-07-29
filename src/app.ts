@@ -27,21 +27,21 @@ export function createApp() {
   // calls this API (comma-separated for more than one, e.g. a production
   // domain plus a Vercel preview URL) — a stray trailing space after a comma
   // or a mismatched http/https or www would silently fail this exact-match
-  // check and the browser would block every request. Falling back to "*"
-  // (unset) works for now only because the frontend authenticates via a
-  // Bearer header rather than cookies (no credentialed requests), but it
-  // allows any site to call the public endpoints — set CORS_ORIGIN once a
-  // production frontend URL exists.
-  const allowedOrigins = process.env.CORS_ORIGIN?.split(",").map((o) => o.trim());
-  if (!allowedOrigins) {
-    console.warn(
-      "CORS_ORIGIN is not set — allowing all origins (*). Set it to your frontend's exact URL(s) before going live.",
+  // check and the browser would block every request. Required, not
+  // optional: an early version of this fell back to "*" (allow any origin)
+  // when unset, from back before real env vars were configured anywhere —
+  // now that every environment (local, Railway) has real values, that
+  // fallback was just a live open-CORS hole, not a helpful default.
+  if (!process.env.CORS_ORIGIN) {
+    throw new Error(
+      "CORS_ORIGIN is not set — set it to your frontend's exact URL(s), comma-separated, before starting the server.",
     );
   }
+  const allowedOrigins = process.env.CORS_ORIGIN.split(",").map((o) => o.trim());
 
   app.use(
     cors({
-      origin: allowedOrigins ?? "*",
+      origin: allowedOrigins,
       credentials: true,
     }),
   );

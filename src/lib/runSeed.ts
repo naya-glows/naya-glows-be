@@ -3,13 +3,28 @@ import { prisma } from "./prisma";
 import { defaultProducts } from "../data/defaultProducts";
 
 async function seedAdmin() {
-  const email = process.env.SEED_ADMIN_EMAIL || "admin@nayaglows.com";
-  const password = process.env.SEED_ADMIN_PASSWORD || "changeme123";
+  const email = process.env.SEED_ADMIN_EMAIL;
+  if (!email) {
+    throw new Error("SEED_ADMIN_EMAIL must be set.");
+  }
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     console.log(`[seed] Admin already exists: ${email}`);
     return;
+  }
+
+  // Only reached when actually creating the FIRST admin account — an
+  // already-seeded environment never hits this, so tightening this later
+  // can't break a deployment that's already up and running. Previously
+  // fell back to the well-known "changeme123" default from before real
+  // env vars were configured anywhere; that default is now public (it's
+  // been in .env.example and this project's chat history), so silently
+  // seeding an admin account with it would be a real vulnerability rather
+  // than a helpful fallback.
+  const password = process.env.SEED_ADMIN_PASSWORD;
+  if (!password) {
+    throw new Error("SEED_ADMIN_PASSWORD must be set to create the initial admin account.");
   }
 
   const passwordHash = await bcrypt.hash(password, 10);

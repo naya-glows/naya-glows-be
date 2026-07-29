@@ -33,7 +33,10 @@ async function createAndSendOtp(email: string, purpose: string, subject: string,
     update: { code, attempts: 0, expiresAt: new Date(Date.now() + OTP_TTL_MS), createdAt: new Date() },
   });
 
-  await sendMail({ to: email, subject, html: html(code) });
+  const sent = await sendMail({ to: email, subject, html: html(code) });
+  if (!sent) {
+    throw new AppError("Couldn't send the verification code. Please try again in a moment.");
+  }
 }
 
 async function verifyAndConsumeOtp(email: string, purpose: string, code: string) {

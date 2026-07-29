@@ -1,13 +1,18 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../lib/appError";
-import { getUsdToNgnRate, getSubscriptionDiscountPercent } from "../settings/settings.service";
+import { getSubscriptionDiscountPercent } from "../settings/settings.service";
 import { getTrackingStageLabel } from "./tracking";
 import { sendMail } from "../../lib/mailer";
 import { orderStatusUpdateEmail } from "../../lib/emailTemplates";
 
-const FREE_SHIPPING_THRESHOLD_USD = 75;
-const FLAT_SHIPPING_USD = 6;
+// Naira is the canonical unit Product.price/originalPrice/variants[].price
+// are stored in — Paystack charges NGN and the admin's real price list is
+// NGN, so there's no USD->NGN conversion step here anymore; USD is a
+// display-only conversion applied client-side (useCurrencyDisplay.ts) for
+// non-Nigeria visitors, computed from the same amounts.
+const FREE_SHIPPING_THRESHOLD_NGN = 120_000;
+const FLAT_SHIPPING_NGN = 9_600;
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -37,9 +42,8 @@ export async function createOrder(input: {
   userId: string;
 }) {
   const slugs = input.items.map((i) => i.slug);
-  const [products, rate, discountPercent] = await Promise.all([
+  const [products, discountPercent] = await Promise.all([
     prisma.product.findMany({ where: { slug: { in: slugs } } }),
-    getUsdToNgnRate(),
     getSubscriptionDiscountPercent(),
   ]);
   const productBySlug = new Map(products.map((p) => [p.slug, p]));
@@ -51,7 +55,7 @@ export async function createOrder(input: {
     );
   }
 
-  let subtotalUsd = 0;
+  let subtotal = 0;
   const lineItems = input.items.map((item) => {
     const product = productBySlug.get(item.slug)!;
     const qty = Math.max(1, Math.floor(item.qty));
@@ -77,7 +81,7 @@ export async function createOrder(input: {
     const unitPrice = item.isSubscription
       ? round2(basePrice * (1 - discountPercent / 100))
       : basePrice;
-    subtotalUsd += unitPrice * qty;
+    subtotal += unitPrice * qty;
     return {
       productId: product.id,
       qty,
@@ -87,16 +91,16 @@ export async function createOrder(input: {
     };
   });
 
-  const shippingUsd = subtotalUsd >= FREE_SHIPPING_THRESHOLD_USD ? 0 : FLAT_SHIPPING_USD;
-  const totalUsd = subtotalUsd + shippingUsd;
+  const shipping = subtotal >= FREE_SHIPPING_THRESHOLD_NGN ? 0 : FLAT_SHIPPING_NGN;
+  const total = subtotal + shipping;
 
   const order = await prisma.order.create({
     data: {
       userId: input.userId,
       currency: "NGN",
-      subtotal: round2(subtotalUsd * rate),
-      shipping: round2(shippingUsd * rate),
-      total: round2(totalUsd * rate),
+      subtotal: round2(subtotal),
+      shipping: round2(shipping),
+      total: round2(total),
       shippingDetails: input.shippingDetails as unknown as Prisma.InputJsonValue,
       items: { create: lineItems },
     },
@@ -145,11 +149,13 @@ export async function setOrderManualStage(id: string, manualStage: string | null
     const email = shippingDetails?.email;
     const label = getTrackingStageLabel(manualStage);
     if (email && label) {
-      await sendMail({
+      // Fire-and-forget — the stage change is already saved above, so the
+      // admin's UI shouldn't hang on the customer notification email.
+      sendMail({
         to: email,
         subject: `Your Naya Glows order is now: ${label}`,
         html: orderStatusUpdateEmail(order, label),
-      });
+      }).catch((err) => console.error("[orders] Failed to send tracking update email:", err));
     }
   }
 

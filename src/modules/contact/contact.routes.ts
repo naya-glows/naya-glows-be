@@ -25,11 +25,12 @@ contactRouter.post(
 
     const contactMessage = await prisma.contactMessage.create({ data: parsed.data });
 
-    await sendMail({
+    // Fire-and-forget — the message is already saved above.
+    sendMail({
       to: getAdminNotificationEmail(),
       subject: "New contact message",
       html: contactMessageAdminNotification(contactMessage),
-    });
+    }).catch((err) => console.error("[contact] Failed to send admin notification email:", err));
 
     res.status(201).json({ contactMessage });
   }),

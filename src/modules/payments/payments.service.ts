@@ -43,12 +43,18 @@ export async function confirmPaystackPayment(reference: string) {
   if (succeeded) {
     const shippingDetails = updatedOrder.shippingDetails as { email?: string } | null;
     const email = shippingDetails?.email;
+    // Fire-and-forget: the customer's payment already succeeded and the
+    // order is already marked PAID above — nothing about their experience
+    // should wait on an email provider (this was previously awaited here,
+    // which is exactly why the verify page's "confirming your payment"
+    // spinner hung for as long as the SMTP send took, including its
+    // multi-second/-minute timeout on failure).
     if (email) {
-      await sendMail({
+      sendMail({
         to: email,
         subject: "Your Naya Glows order is confirmed",
         html: orderConfirmationEmail(updatedOrder),
-      });
+      }).catch((err) => console.error("[payments] Failed to send order confirmation email:", err));
     }
   }
 

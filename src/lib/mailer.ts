@@ -13,18 +13,32 @@ function getTransport(): nodemailer.Transporter | null {
     auth: process.env.SMTP_USER
       ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
       : undefined,
+    // Many PaaS hosts (Railway included) throttle or don't reliably route
+    // outbound SMTP ports, which otherwise hangs on nodemailer's ~2min
+    // default timeout per attempt — with pool:false and no cap here, a
+    // single unreachable host turns a 50-recipient campaign into ~100
+    // minutes of silent hanging (see sendMail's error handling below for
+    // why that failure was also invisible). Fail fast instead.
+    pool: true,
+    maxConnections: 3,
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 10_000,
   });
   return transport;
 }
 
 // Degrades gracefully when SMTP isn't configured — logs instead of
 // throwing, same "hardcoded/graceful default" philosophy used everywhere
-// else in this project for unconfigured external dependencies.
-export async function sendMail(opts: { to: string; subject: string; html: string }) {
+// else in this project for unconfigured external dependencies. Returns
+// whether the send actually succeeded (rather than swallowing failures
+// silently) so callers sending to multiple recipients — e.g. email
+// campaigns — can report real delivery counts instead of a blind "sent".
+export async function sendMail(opts: { to: string; subject: string; html: string }): Promise<boolean> {
   const t = getTransport();
   if (!t) {
     console.log(`[mailer] SMTP not configured — skipped "${opts.subject}" to ${opts.to}`);
-    return;
+    return false;
   }
 
   try {
@@ -32,8 +46,10 @@ export async function sendMail(opts: { to: string; subject: string; html: string
       from: process.env.SMTP_FROM || "Naya Glows <no-reply@nayaglows.com>",
       ...opts,
     });
+    return true;
   } catch (err) {
-    console.error("[mailer] Failed to send email:", err);
+    console.error(`[mailer] Failed to send email to ${opts.to}:`, err);
+    return false;
   }
 }
 

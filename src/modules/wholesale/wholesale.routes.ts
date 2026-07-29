@@ -26,11 +26,12 @@ wholesaleRouter.post(
 
     const inquiry = await prisma.wholesaleInquiry.create({ data: parsed.data });
 
-    await sendMail({
+    // Fire-and-forget — the inquiry is already saved above.
+    sendMail({
       to: getAdminNotificationEmail(),
       subject: "New wholesale inquiry",
       html: wholesaleInquiryAdminNotification(inquiry),
-    });
+    }).catch((err) => console.error("[wholesale] Failed to send admin notification email:", err));
 
     res.status(201).json({ inquiry });
   }),

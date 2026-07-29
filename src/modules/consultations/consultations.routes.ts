@@ -35,16 +35,19 @@ consultationsRouter.post(
       },
     });
 
-    await sendMail({
+    // Fire-and-forget — the request is already saved above, so a slow or
+    // failing email provider shouldn't make the visitor wait on their form
+    // submission response.
+    sendMail({
       to: request.email,
       subject: "We've received your consultation request",
       html: consultationReceivedEmail(request),
-    });
-    await sendMail({
+    }).catch((err) => console.error("[consultations] Failed to send confirmation email:", err));
+    sendMail({
       to: getAdminNotificationEmail(),
       subject: "New consultation request",
       html: consultationAdminNotification(request),
-    });
+    }).catch((err) => console.error("[consultations] Failed to send admin notification email:", err));
 
     res.status(201).json({ request });
   }),

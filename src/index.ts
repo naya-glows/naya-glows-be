@@ -3,6 +3,7 @@ import { createApp } from "./app";
 import { prisma } from "./lib/prisma";
 import { runSeed } from "./lib/runSeed";
 import { runAbandonedCartReminders } from "./jobs/cartReminders";
+import { syncUsdToNgnRate } from "./jobs/fxRateSync";
 
 const port = Number(process.env.PORT) || 4000;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -48,6 +49,13 @@ async function main() {
     runAbandonedCartReminders().catch((err) =>
       console.error("[cart-reminders] Run failed:", err),
     );
+  }, ONE_DAY_MS);
+
+  // Runs once immediately (so a fresh deploy/reset gets a real rate right
+  // away instead of waiting a full day) and then once every 24h.
+  syncUsdToNgnRate().catch((err) => console.error("[fx-rate] Initial sync failed:", err));
+  setInterval(() => {
+    syncUsdToNgnRate().catch((err) => console.error("[fx-rate] Run failed:", err));
   }, ONE_DAY_MS);
 }
 
