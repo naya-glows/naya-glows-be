@@ -129,7 +129,7 @@ export function listOrdersForUser(userId: string) {
   return prisma.order.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
-    include: { items: { include: { product: { select: { name: true } } } } },
+    include: { items: { include: { product: { select: { name: true, image: true } } } } },
   });
 }
 

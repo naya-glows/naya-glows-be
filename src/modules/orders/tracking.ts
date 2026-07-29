@@ -2,7 +2,6 @@ export type TrackingStageKey =
   | "PLACED"
   | "PROCESSING"
   | "DISPATCHED"
-  | "OUT_FOR_DELIVERY"
   | "DELIVERED";
 
 // Fixed day-offsets from payment confirmation — the "1 week span" the
@@ -12,7 +11,6 @@ const STAGE_DEFS: { key: TrackingStageKey; label: string; dayOffset: number }[] 
   { key: "PLACED", label: "Order Placed", dayOffset: 0 },
   { key: "PROCESSING", label: "Processing", dayOffset: 1 },
   { key: "DISPATCHED", label: "Dispatched", dayOffset: 3 },
-  { key: "OUT_FOR_DELIVERY", label: "Out for Delivery", dayOffset: 6 },
   { key: "DELIVERED", label: "Delivered", dayOffset: 7 },
 ];
 
