@@ -4,10 +4,10 @@ import { signToken } from "../../lib/jwt";
 import { currencyForCountry } from "../../lib/currency";
 import { AppError } from "../../lib/appError";
 import { sendMail } from "../../lib/mailer";
-import { signupOtpEmail, passwordResetOtpEmail, welcomeEmail } from "../../lib/emailTemplates";
+import { signupOtpEmail, loginOtpEmail, welcomeEmail } from "../../lib/emailTemplates";
 
 const SIGNUP_OTP_PURPOSE = "SIGNUP";
-const RESET_OTP_PURPOSE = "RESET_PASSWORD";
+const LOGIN_OTP_PURPOSE = "LOGIN";
 const OTP_TTL_MS = 10 * 60 * 1000;
 const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
 const OTP_MAX_ATTEMPTS = 5;
@@ -71,34 +71,29 @@ export async function requestSignupOtp(email: string) {
   await createAndSendOtp(email, SIGNUP_OTP_PURPOSE, "Your Naya Glows verification code", signupOtpEmail);
 }
 
-// Deliberately does NOT reveal whether the email has an account — always
-// "succeeds" from the caller's perspective; if there's no account, requestPasswordReset
-// below just skips sending anything.
-export async function requestPasswordReset(email: string) {
+// Step 1 of signing in: emails a 6-digit code to an *existing* account.
+// Unlike requestSignupOtp, this deliberately does reveal whether the email
+// has an account — there's no password fallback to fall back on anymore, so
+// the caller needs to know to go create one instead.
+export async function requestLoginOtp(email: string) {
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) return;
+  if (!user) throw new AppError("No account found with this email. Try creating one instead.");
 
-  await createAndSendOtp(
-    email,
-    RESET_OTP_PURPOSE,
-    "Reset your Naya Glows password",
-    passwordResetOtpEmail,
-  );
+  await createAndSendOtp(email, LOGIN_OTP_PURPOSE, "Your Naya Glows sign-in code", loginOtpEmail);
 }
 
-export async function resetPassword(email: string, code: string, newPassword: string) {
+export async function loginUserWithOtp(email: string, code: string) {
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) throw new AppError("Incorrect code. Please try again.");
+  if (!user) throw new AppError("No account found with this email.");
 
-  await verifyAndConsumeOtp(email, RESET_OTP_PURPOSE, code);
+  await verifyAndConsumeOtp(email, LOGIN_OTP_PURPOSE, code);
 
-  const passwordHash = await bcrypt.hash(newPassword, 10);
-  await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
+  const token = signToken({ userId: user.id, role: user.role });
+  return { user, token };
 }
 
 export async function registerUser(input: {
   email: string;
-  password: string;
   name: string;
   country?: string;
   referralCode?: string;
@@ -118,11 +113,9 @@ export async function registerUser(input: {
     referredByCodeId = code.id;
   }
 
-  const passwordHash = await bcrypt.hash(input.password, 10);
   const user = await prisma.user.create({
     data: {
       email: input.email,
-      passwordHash,
       name: input.name,
       country: input.country,
       currency: currencyForCountry(input.country),
@@ -143,9 +136,12 @@ export async function registerUser(input: {
   return { user, token };
 }
 
+// Password login only remains meaningful for admin accounts (seeded with a
+// real passwordHash) — customer accounts have none and authenticate via
+// requestLoginOtp/loginUserWithOtp above instead.
 export async function loginUser(email: string, password: string) {
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) throw new AppError("Invalid email or password");
+  if (!user || !user.passwordHash) throw new AppError("Invalid email or password");
 
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) throw new AppError("Invalid email or password");
@@ -174,21 +170,6 @@ export async function updateProfile(
       currency: input.country ? currencyForCountry(input.country) : undefined,
     },
   });
-}
-
-export async function changePassword(
-  userId: string,
-  currentPassword: string,
-  newPassword: string,
-) {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) throw new AppError("User not found");
-
-  const valid = await bcrypt.compare(currentPassword, user.passwordHash);
-  if (!valid) throw new AppError("Current password is incorrect");
-
-  const passwordHash = await bcrypt.hash(newPassword, 10);
-  await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
 }
 
 export function serializeUser(user: {

@@ -16,7 +16,9 @@ enum Role {
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
-  passwordHash String
+  // Nullable — customers authenticate via email OTP now and never set one;
+  // only admin accounts (created by `npm run seed`) still have a real hash.
+  passwordHash String?
   name         String
   role         Role     @default(CUSTOMER)
   country      String?
