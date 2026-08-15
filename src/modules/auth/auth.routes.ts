@@ -41,7 +41,8 @@ router.post(
 
 const registerSchema = z.object({
   email: z.string().email(),
-  name: z.string().min(1),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
   country: z.string().optional(),
   referralCode: z.string().optional(),
   otpCode: z.string().length(6),
@@ -141,7 +142,8 @@ router.get(
 );
 
 const updateProfileSchema = z.object({
-  name: z.string().min(1).optional(),
+  firstName: z.string().min(1).optional(),
+  lastName: z.string().min(1).optional(),
   email: z.string().email().optional(),
   country: z.string().optional(),
 });

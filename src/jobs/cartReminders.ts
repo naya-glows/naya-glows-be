@@ -18,7 +18,7 @@ export async function runAbandonedCartReminders() {
       await sendMail({
         to: cart.user.email,
         subject: "You left something in your cart",
-        html: cartReminderEmail(cart.user.name, items),
+        html: cartReminderEmail(cart.user.firstName, items),
       });
       await markReminderSent(cart.id);
     } catch (err) {

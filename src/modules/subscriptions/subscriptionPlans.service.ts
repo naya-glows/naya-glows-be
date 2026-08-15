@@ -144,6 +144,6 @@ export function listMyPlans(userId: string) {
 export function listAllPlansForAdmin() {
   return prisma.subscriptionPlan.findMany({
     orderBy: { createdAt: "desc" },
-    include: { user: { select: { name: true, email: true } } },
+    include: { user: { select: { firstName: true, lastName: true, email: true } } },
   });
 }

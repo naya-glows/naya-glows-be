@@ -61,18 +61,30 @@ export function loginOtpEmail(code: string) {
   );
 }
 
-export function orderConfirmationEmail(order: {
-  id: string;
-  currency: string;
-  total: number;
-  items: { qty: number; price: number; product: { name: string } }[];
-}) {
+export function orderConfirmationEmail(
+  order: {
+    id: string;
+    currency: string;
+    total: number;
+    items: { qty: number; price: number; product: { name: string } }[];
+  },
+  email: string,
+) {
   const rows = order.items
     .map(
       (i) =>
         `<tr><td style="padding:6px 0;">${i.product.name} × ${i.qty}</td><td style="padding:6px 0; text-align:right;">${order.currency} ${(i.price * i.qty).toLocaleString()}</td></tr>`,
     )
     .join("");
+
+  // Same guest-friendly ?id=&email= link the post-checkout verify page
+  // redirects to (track.ts's /track/:id route only needs the order's own
+  // contact email as proof of ownership) — this works whether or not the
+  // recipient is signed in, or even has an account at all, so the button
+  // never needs to detour through a login first. If they DO happen to click
+  // through to sign in anyway, /track-order still isn't auth-gated, so
+  // there's nothing for a login to interrupt.
+  const trackUrl = `https://nayaglows.skin/track-order?id=${encodeURIComponent(order.id)}&email=${encodeURIComponent(email)}`;
 
   return wrapper(
     "Order Confirmed",
@@ -84,7 +96,9 @@ export function orderConfirmationEmail(order: {
       <tr><td style="padding-top:12px; font-weight:600; border-top:1px solid #16241a1a;">Total</td>
           <td style="padding-top:12px; font-weight:600; text-align:right; border-top:1px solid #16241a1a;">${order.currency} ${order.total.toLocaleString()}</td></tr>
     </table>
-    <p style="margin-top:24px;">You can track your delivery any time using this order number on our Track Order page.</p>
+    <p style="margin-top:24px;">
+      <a href="${trackUrl}" style="display:inline-block; background:#16241a; color:#fff; text-decoration:none; padding:12px 24px; border-radius:999px; font-weight:600; font-size:13px;">Track Your Order</a>
+    </p>
   `,
   );
 }

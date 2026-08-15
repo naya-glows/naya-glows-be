@@ -14,6 +14,11 @@ export const DEFAULT_SUBSCRIPTION_B_12_MONTH_PERCENT = 20;
 export type FulfillmentMode = "immediate" | "recurring";
 export const DEFAULT_SUBSCRIPTION_B_FULFILLMENT_MODE: FulfillmentMode = "immediate";
 
+// Same flat fee for both tiers for now — "for now" per explicit instruction,
+// until the admin sets real differentiated Lagos/outside-Lagos rates.
+export const DEFAULT_SHIPPING_FEE_LAGOS_NGN = 5000;
+export const DEFAULT_SHIPPING_FEE_OUTSIDE_LAGOS_NGN = 5000;
+
 export const SETTINGS_KEYS = {
   usdToNgnRate: "usdToNgnRate",
   subscriptionDiscountPercent: "subscriptionDiscountPercent",
@@ -21,6 +26,8 @@ export const SETTINGS_KEYS = {
   subscriptionB6MonthPercent: "subscriptionB6MonthPercent",
   subscriptionB12MonthPercent: "subscriptionB12MonthPercent",
   subscriptionBFulfillmentMode: "subscriptionBFulfillmentMode",
+  shippingFeeLagosNgn: "shippingFeeLagosNgn",
+  shippingFeeOutsideLagosNgn: "shippingFeeOutsideLagosNgn",
 } as const;
 
 export async function getUsdToNgnRate(): Promise<number> {
@@ -65,6 +72,31 @@ export async function getSubscriptionBFulfillmentMode(): Promise<FulfillmentMode
   return row?.value === "recurring" ? "recurring" : DEFAULT_SUBSCRIPTION_B_FULFILLMENT_MODE;
 }
 
+async function getAmountSetting(key: string, fallback: number): Promise<number> {
+  const row = await prisma.setting.findUnique({ where: { key } });
+  const fromDb = row ? Number(row.value) : NaN;
+  return Number.isFinite(fromDb) && fromDb >= 0 ? fromDb : fallback;
+}
+
+export function getShippingFeeLagosNgn(): Promise<number> {
+  return getAmountSetting(SETTINGS_KEYS.shippingFeeLagosNgn, DEFAULT_SHIPPING_FEE_LAGOS_NGN);
+}
+
+export function getShippingFeeOutsideLagosNgn(): Promise<number> {
+  return getAmountSetting(
+    SETTINGS_KEYS.shippingFeeOutsideLagosNgn,
+    DEFAULT_SHIPPING_FEE_OUTSIDE_LAGOS_NGN,
+  );
+}
+
+// Nigeria's Lagos vs. outside-Lagos split is the only location distinction
+// the business currently prices differently — every other country (no
+// state list, just free text) falls under "outside Lagos" too.
+export async function getShippingFeeNgn(country: string, state: string): Promise<number> {
+  const isLagos = country.trim().toUpperCase() === "NG" && state.trim().toLowerCase() === "lagos";
+  return isLagos ? getShippingFeeLagosNgn() : getShippingFeeOutsideLagosNgn();
+}
+
 export async function getPublicSettings() {
   const [
     usdToNgnRate,
@@ -73,6 +105,8 @@ export async function getPublicSettings() {
     subscriptionB6MonthPercent,
     subscriptionB12MonthPercent,
     subscriptionBFulfillmentMode,
+    shippingFeeLagosNgn,
+    shippingFeeOutsideLagosNgn,
   ] = await Promise.all([
     getUsdToNgnRate(),
     getSubscriptionDiscountPercent(),
@@ -80,6 +114,8 @@ export async function getPublicSettings() {
     getSubscriptionBDiscountPercent("SIX_MONTH"),
     getSubscriptionBDiscountPercent("TWELVE_MONTH"),
     getSubscriptionBFulfillmentMode(),
+    getShippingFeeLagosNgn(),
+    getShippingFeeOutsideLagosNgn(),
   ]);
   return {
     usdToNgnRate,
@@ -88,6 +124,8 @@ export async function getPublicSettings() {
     subscriptionB6MonthPercent,
     subscriptionB12MonthPercent,
     subscriptionBFulfillmentMode,
+    shippingFeeLagosNgn,
+    shippingFeeOutsideLagosNgn,
   };
 }
 

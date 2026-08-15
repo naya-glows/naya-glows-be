@@ -6,10 +6,11 @@ import { orderConfirmationEmail } from "../src/lib/emailTemplates";
 // (the richest of the templates — header, itemized table, total) to a real
 // inbox so the look can be checked outside of a mail client's own preview.
 async function main() {
-  if (!process.env.SMTP_HOST) {
-    throw new Error("SMTP_HOST is not set — check backend/.env");
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error("RESEND_API_KEY is not set — check backend/.env");
   }
 
+  const sampleEmail = "emmakobi91@gmail.com";
   const sampleOrder = {
     id: "cmy-sample-preview",
     currency: "NGN",
@@ -21,9 +22,9 @@ async function main() {
   };
 
   await sendMail({
-    to: "emmakobi91@gmail.com",
+    to: sampleEmail,
     subject: "Naya Glows — sample email template preview",
-    html: orderConfirmationEmail(sampleOrder),
+    html: orderConfirmationEmail(sampleOrder, sampleEmail),
   });
 
   console.log("Sent.");

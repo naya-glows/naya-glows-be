@@ -78,7 +78,7 @@ export async function confirmPaystackPayment(reference: string) {
       sendMail({
         to: email,
         subject: "Your Naya Glows order is confirmed",
-        html: orderConfirmationEmail(updatedOrder),
+        html: orderConfirmationEmail(updatedOrder, email),
       }).catch((err) => console.error("[payments] Failed to send order confirmation email:", err));
     }
 

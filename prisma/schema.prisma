@@ -19,7 +19,8 @@ model User {
   // Nullable — customers authenticate via email OTP now and never set one;
   // only admin accounts (created by `npm run seed`) still have a real hash.
   passwordHash String?
-  name         String
+  firstName    String
+  lastName     String
   role         Role     @default(CUSTOMER)
   country      String?
   currency     String   @default("USD")
@@ -72,13 +73,19 @@ model Cart {
 }
 
 model Influencer {
-  id           String   @id @default(cuid())
-  userId       String   @unique
-  user         User     @relation(fields: [userId], references: [id])
-  platform     String?
-  socialHandle String?
-  bio          String?
-  createdAt    DateTime @default(now())
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  // Stored uppercased — the prefix every one of this influencer's referral
+  // codes starts with (e.g. "STARGIRL" -> "STARGIRL4Z5OA3E2"), unique so two
+  // influencers never share confusingly similar-looking codes.
+  codeName        String  @unique
+  twitterHandle   String?
+  instagramHandle String?
+  tiktokHandle    String?
+  bio             String?
+  createdAt       DateTime @default(now())
 
   referralCodes ReferralCode[]
 }

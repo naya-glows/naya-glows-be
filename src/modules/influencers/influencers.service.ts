@@ -8,10 +8,25 @@ import { AppError } from "../../lib/appError";
 // this only ever adds a profile to an existing userId.
 export async function upgradeToInfluencer(
   userId: string,
-  input: { platform?: string; socialHandle?: string; bio?: string },
+  input: {
+    codeName: string;
+    twitterHandle?: string;
+    instagramHandle?: string;
+    tiktokHandle?: string;
+    bio?: string;
+  },
 ) {
   const existing = await getInfluencerByUserId(userId);
   if (existing) throw new AppError("This account is already part of the influencer program.");
+
+  // Normalized the same way every referral code that gets built from it
+  // will read — letters/digits only, uppercased, so "Star Girl!" and
+  // "star_girl" don't collide-but-look-different in the codes they produce.
+  const codeName = input.codeName.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (!codeName) throw new AppError("Please enter a valid influencer code name.");
+
+  const codeNameTaken = await prisma.influencer.findUnique({ where: { codeName } });
+  if (codeNameTaken) throw new AppError("That code name is already taken — please choose another.");
 
   // The Influencer profile and the role bump happen together so we never
   // end up with one without the other.
@@ -19,9 +34,11 @@ export async function upgradeToInfluencer(
     await tx.influencer.create({
       data: {
         userId,
-        platform: input.platform,
-        socialHandle: input.socialHandle,
-        bio: input.bio,
+        codeName,
+        twitterHandle: input.twitterHandle?.trim() || undefined,
+        instagramHandle: input.instagramHandle?.trim() || undefined,
+        tiktokHandle: input.tiktokHandle?.trim() || undefined,
+        bio: input.bio?.trim() || undefined,
       },
     });
     return tx.user.update({ where: { id: userId }, data: { role: "INFLUENCER" } });
@@ -34,15 +51,16 @@ export async function upgradeToInfluencer(
   return { user, token };
 }
 
-function generateCandidateCode(): string {
-  const suffix = Math.random().toString(36).slice(2, 8).toUpperCase().padEnd(6, "X");
-  return `GLOW${suffix}`;
+// e.g. codeName "STARGIRL" -> "STARGIRL4Z5OA3E2".
+function generateCandidateCode(codeName: string): string {
+  const suffix = Math.random().toString(36).slice(2, 10).toUpperCase().padEnd(8, "X");
+  return `${codeName}${suffix}`;
 }
 
 export async function getInfluencerByUserId(userId: string) {
   return prisma.influencer.findUnique({
     where: { userId },
-    include: { user: { select: { name: true, email: true } } },
+    include: { user: { select: { firstName: true, lastName: true, email: true } } },
   });
 }
 
@@ -50,10 +68,10 @@ export async function generateReferralCode(userId: string) {
   const influencer = await prisma.influencer.findUnique({ where: { userId } });
   if (!influencer) throw new AppError("Influencer profile not found");
 
-  // Collisions are astronomically unlikely (4 letters + 4 base36 chars) but
+  // Collisions are astronomically unlikely (codeName + 8 base36 chars) but
   // retry a few times rather than trusting that entirely.
   for (let attempt = 0; attempt < 5; attempt++) {
-    const code = generateCandidateCode();
+    const code = generateCandidateCode(influencer.codeName);
     const existing = await prisma.referralCode.findUnique({ where: { code } });
     if (!existing) {
       return prisma.referralCode.create({ data: { code, influencerId: influencer.id } });
@@ -84,7 +102,7 @@ export async function listAllInfluencersForAdmin() {
   const influencers = await prisma.influencer.findMany({
     orderBy: { createdAt: "desc" },
     include: {
-      user: { select: { name: true, email: true, createdAt: true } },
+      user: { select: { firstName: true, lastName: true, email: true, createdAt: true } },
       referralCodes: {
         include: { _count: { select: { referredUsers: true } } },
       },
@@ -93,10 +111,12 @@ export async function listAllInfluencersForAdmin() {
 
   return influencers.map((inf) => ({
     id: inf.id,
-    name: inf.user.name,
+    name: `${inf.user.firstName} ${inf.user.lastName}`,
     email: inf.user.email,
-    platform: inf.platform,
-    socialHandle: inf.socialHandle,
+    codeName: inf.codeName,
+    twitterHandle: inf.twitterHandle,
+    instagramHandle: inf.instagramHandle,
+    tiktokHandle: inf.tiktokHandle,
     bio: inf.bio,
     createdAt: inf.user.createdAt,
     codes: inf.referralCodes.map((c) => ({

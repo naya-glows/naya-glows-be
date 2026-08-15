@@ -32,7 +32,8 @@ async function seedAdmin() {
     data: {
       email,
       passwordHash,
-      name: "Naya Glows Admin",
+      firstName: "Naya Glows",
+      lastName: "Admin",
       role: "ADMIN",
       country: "NG",
       currency: "NGN",

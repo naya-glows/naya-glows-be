@@ -9,7 +9,9 @@ import { signupOtpEmail, loginOtpEmail, welcomeEmail } from "../../lib/emailTemp
 const SIGNUP_OTP_PURPOSE = "SIGNUP";
 const LOGIN_OTP_PURPOSE = "LOGIN";
 const OTP_TTL_MS = 10 * 60 * 1000;
-const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
+// Matches the frontend's resend-button countdown (signin/page.tsx) — kept
+// in sync so the UI's timer and the server's actual enforcement agree.
+const OTP_RESEND_COOLDOWN_MS = 2 * 60 * 1000;
 const OTP_MAX_ATTEMPTS = 5;
 
 function generateOtpCode(): string {
@@ -94,7 +96,8 @@ export async function loginUserWithOtp(email: string, code: string) {
 
 export async function registerUser(input: {
   email: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   country?: string;
   referralCode?: string;
   otpCode: string;
@@ -116,7 +119,8 @@ export async function registerUser(input: {
   const user = await prisma.user.create({
     data: {
       email: input.email,
-      name: input.name,
+      firstName: input.firstName,
+      lastName: input.lastName,
       country: input.country,
       currency: currencyForCountry(input.country),
       referredByCodeId,
@@ -130,7 +134,7 @@ export async function registerUser(input: {
   sendMail({
     to: user.email,
     subject: "Welcome to Naya Glows",
-    html: welcomeEmail(user.name),
+    html: welcomeEmail(user.firstName),
   }).catch((err) => console.error("[auth] Failed to send welcome email:", err));
 
   return { user, token };
@@ -152,7 +156,7 @@ export async function loginUser(email: string, password: string) {
 
 export async function updateProfile(
   userId: string,
-  input: { name?: string; email?: string; country?: string },
+  input: { firstName?: string; lastName?: string; email?: string; country?: string },
 ) {
   if (input.email) {
     const existing = await prisma.user.findUnique({ where: { email: input.email } });
@@ -164,7 +168,8 @@ export async function updateProfile(
   return prisma.user.update({
     where: { id: userId },
     data: {
-      name: input.name,
+      firstName: input.firstName,
+      lastName: input.lastName,
       email: input.email,
       country: input.country,
       currency: input.country ? currencyForCountry(input.country) : undefined,
@@ -175,7 +180,8 @@ export async function updateProfile(
 export function serializeUser(user: {
   id: string;
   email: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   role: string;
   country: string | null;
   currency: string;
@@ -184,7 +190,8 @@ export function serializeUser(user: {
   return {
     id: user.id,
     email: user.email,
-    name: user.name,
+    firstName: user.firstName,
+    lastName: user.lastName,
     role: user.role,
     country: user.country,
     currency: user.currency,

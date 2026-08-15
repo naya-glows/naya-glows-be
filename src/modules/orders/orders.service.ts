@@ -5,6 +5,7 @@ import { getTrackingStageLabel } from "./tracking";
 import { sendMail } from "../../lib/mailer";
 import { orderStatusUpdateEmail } from "../../lib/emailTemplates";
 import { getMyActiveProductSubscriptionsByProductId } from "../subscriptions/productSubscriptions.service";
+import { getShippingFeeNgn } from "../settings/settings.service";
 
 // Naira is the canonical unit Product.price/originalPrice/variants[].price
 // are stored in — Paystack charges NGN and the admin's real price list is
@@ -12,7 +13,6 @@ import { getMyActiveProductSubscriptionsByProductId } from "../subscriptions/pro
 // display-only conversion applied client-side (useCurrencyDisplay.ts) for
 // non-Nigeria visitors, computed from the same amounts.
 const FREE_SHIPPING_THRESHOLD_NGN = 120_000;
-const FLAT_SHIPPING_NGN = 9_600;
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -33,6 +33,7 @@ export type ShippingDetails = {
   address: string;
   city: string;
   state: string;
+  country: string;
   zip: string;
 };
 
@@ -95,7 +96,10 @@ export async function createOrder(input: {
     };
   });
 
-  const shipping = subtotal >= FREE_SHIPPING_THRESHOLD_NGN ? 0 : FLAT_SHIPPING_NGN;
+  const shipping =
+    subtotal >= FREE_SHIPPING_THRESHOLD_NGN
+      ? 0
+      : await getShippingFeeNgn(input.shippingDetails.country, input.shippingDetails.state);
   const total = subtotal + shipping;
 
   const order = await prisma.order.create({
@@ -120,7 +124,7 @@ export function listOrdersForAdmin() {
     include: {
       items: { include: { product: { select: { name: true } } } },
       payments: true,
-      user: { select: { email: true, name: true } },
+      user: { select: { email: true, firstName: true, lastName: true } },
     },
   });
 }

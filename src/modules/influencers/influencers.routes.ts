@@ -14,11 +14,22 @@ import {
 
 export const influencersRouter = Router();
 
-const upgradeSchema = z.object({
-  platform: z.string().optional(),
-  socialHandle: z.string().optional(),
-  bio: z.string().optional(),
-});
+const upgradeSchema = z
+  .object({
+    codeName: z.string().trim().min(2, "Code name must be at least 2 characters").max(20),
+    twitterHandle: z.string().optional(),
+    instagramHandle: z.string().optional(),
+    tiktokHandle: z.string().optional(),
+    bio: z.string().optional(),
+  })
+  .refine(
+    (data) =>
+      Boolean(data.twitterHandle?.trim() || data.instagramHandle?.trim() || data.tiktokHandle?.trim()),
+    {
+      message: "Please add at least one social media handle or link.",
+      path: ["twitterHandle"],
+    },
+  );
 
 // Signed-in customers only — becoming an influencer never creates a second
 // account, it appends an Influencer profile to the one the caller is
@@ -50,10 +61,12 @@ influencersRouter.get(
     res.json({
       influencer: {
         id: influencer.id,
-        name: influencer.user.name,
+        name: `${influencer.user.firstName} ${influencer.user.lastName}`,
         email: influencer.user.email,
-        platform: influencer.platform,
-        socialHandle: influencer.socialHandle,
+        codeName: influencer.codeName,
+        twitterHandle: influencer.twitterHandle,
+        instagramHandle: influencer.instagramHandle,
+        tiktokHandle: influencer.tiktokHandle,
         bio: influencer.bio,
         createdAt: influencer.createdAt,
       },

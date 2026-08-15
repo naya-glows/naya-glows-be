@@ -108,7 +108,10 @@ adminSubscriptionsRouter.get(
     const [productSubscriptions, plans] = await Promise.all([
       prisma.productSubscription.findMany({
         orderBy: { createdAt: "desc" },
-        include: { user: { select: { name: true, email: true } }, product: { select: { name: true, slug: true } } },
+        include: {
+          user: { select: { firstName: true, lastName: true, email: true } },
+          product: { select: { name: true, slug: true } },
+        },
       }),
       listAllPlansForAdmin(),
     ]);

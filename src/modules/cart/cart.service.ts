@@ -24,7 +24,7 @@ export async function findAbandonedCarts() {
   const cutoff = new Date(Date.now() - ABANDONED_AFTER_MS);
   const carts = await prisma.cart.findMany({
     where: { updatedAt: { lte: cutoff }, reminderSentAt: null },
-    include: { user: { select: { id: true, email: true, name: true } } },
+    include: { user: { select: { id: true, email: true, firstName: true } } },
   });
   // Json[] can't be filtered in the where clause portably — cheap enough to
   // filter empty carts in memory given this only ever runs once a day.
