@@ -2,6 +2,7 @@ export const wrapper = (title: string, body: string) => `
 <div style="font-family: -apple-system, Helvetica, Arial, sans-serif; background:#f4faf3; padding:32px 16px;">
   <div style="max-width:520px; margin:0 auto; background:#ffffff; border-radius:16px; overflow:hidden;">
     <div style="background:#16241a; color:#fff; padding:24px 32px;">
+      <img src="https://res.cloudinary.com/bhozkz7o/image/upload/v1784381892/naya-glows/legacy/naya-logo.png" alt="Naya Glows" width="36" height="36" style="display:block; margin-bottom:12px; border-radius:50%; background:#fff;" />
       <p style="margin:0; font-size:11px; letter-spacing:0.3em; text-transform:uppercase; color:#8ab88e;">Naya Glows</p>
       <h1 style="margin:8px 0 0; font-size:20px; font-weight:600;">${title}</h1>
     </div>
