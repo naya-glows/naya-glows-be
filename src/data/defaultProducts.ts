@@ -124,7 +124,7 @@ export const defaultProducts = [
     categoryAccent: "Purify & Balance",
     price: 10000,
     originalPrice: 10000,
-    image: "https://res.cloudinary.com/bhozkz7o/image/upload/v1784381840/naya-glows/legacy/432e42ab-30fd-4531-815a-e4ece090058b.png",
+    image: "https://res.cloudinary.com/bhozkz7o/image/upload/v1784381832/naya-glows/legacy/056bf54d-5022-45a9-861d-fa2a3620f4a3.png",
     tagline: "Salicylic Acid pore cleanser",
     description:
       "A gentle daily foaming cleanser with Salicylic Acid, Lactic Acid, and Licorice Root Extract that clears pores of excess oil and impurities without stripping the skin.",
@@ -150,7 +150,7 @@ export const defaultProducts = [
     categoryAccent: "Purify & Balance",
     price: 8500,
     originalPrice: 8500,
-    image: "https://res.cloudinary.com/bhozkz7o/image/upload/v1784381832/naya-glows/legacy/056bf54d-5022-45a9-861d-fa2a3620f4a3.png",
+    image: "https://res.cloudinary.com/bhozkz7o/image/upload/v1784381840/naya-glows/legacy/432e42ab-30fd-4531-815a-e4ece090058b.png",
     tagline: "Balance & refine pores",
     description:
       "A refreshing toner with our Skin Clarifying Complex that restores optimal skin pH, refines the look of pores, and preps skin to better absorb the treatments that follow.",
