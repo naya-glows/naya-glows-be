@@ -24,6 +24,14 @@ import type { AuthedRequest } from "./middleware/auth";
 export function createApp() {
   const app = express();
 
+  // Railway puts the app behind a reverse proxy — without this, every
+  // request's req.ip is the proxy's own internal address (identical for
+  // every visitor), which makes IP-based rate limiting either useless or
+  // actively dangerous: one bad actor would exhaust the single shared
+  // bucket and lock out every real user. `1` trusts exactly one hop
+  // (Railway's edge), matching how the service is actually deployed.
+  app.set("trust proxy", 1);
+
   // CORS_ORIGIN must be the exact scheme+host(+port) of every frontend that
   // calls this API (comma-separated for more than one, e.g. a production
   // domain plus a Vercel preview URL) — a stray trailing space after a comma

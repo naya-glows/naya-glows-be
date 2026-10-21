@@ -10,6 +10,7 @@ import {
   serializeUser,
 } from "./auth.service";
 import { requireAuth, type AuthedRequest } from "../../middleware/auth";
+import { loginLimiter, otpRequestLimiter } from "../../middleware/rateLimit";
 import { prisma } from "../../lib/prisma";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { AppError } from "../../lib/appError";
@@ -24,6 +25,7 @@ const otpRequestSchema = z.object({ email: z.string().email() });
 // differently: an existing account, which register() would reject anyway.
 router.post(
   "/otp/request",
+  otpRequestLimiter,
   asyncHandler(async (req, res) => {
     const parsed = otpRequestSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -71,7 +73,7 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-router.post("/login", async (req, res) => {
+router.post("/login", loginLimiter, async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
@@ -92,6 +94,7 @@ const otpLoginRequestSchema = z.object({ email: z.string().email() });
 // Step 1 of customer signin — emails a 6-digit code to an existing account.
 router.post(
   "/otp/login-request",
+  otpRequestLimiter,
   asyncHandler(async (req, res) => {
     const parsed = otpLoginRequestSchema.safeParse(req.body);
     if (!parsed.success) {

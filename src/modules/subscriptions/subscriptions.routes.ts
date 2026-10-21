@@ -24,8 +24,11 @@ subscriptionsRouter.get(
   }),
 );
 
+// Same reasoning as orders.routes.ts's per-item qty cap — this is also
+// multiplied by up to 12 months server-side (quotePlan's totalQtyForTerm),
+// so an unbounded qtyPerMonth would be even more exaggerated here.
 const planItemsSchema = z
-  .array(z.object({ slug: z.string().min(1), qtyPerMonth: z.number().int().positive() }))
+  .array(z.object({ slug: z.string().min(1), qtyPerMonth: z.number().int().positive().max(100) }))
   .min(1);
 const termSchema = z.enum(["THREE_MONTH", "SIX_MONTH", "TWELVE_MONTH"]);
 

@@ -29,7 +29,14 @@ const createOrderSchema = z.object({
     .array(
       z.object({
         slug: z.string().min(1),
-        qty: z.number().int().positive(),
+        // Caps a single line item at a realistic retail quantity — a
+        // normal checkout has no reason to exceed this, and without a
+        // bound here nothing stops a qty of e.g. 999999999 from being
+        // accepted (priced correctly per-unit, but still an easy way to
+        // generate a garbage order or lean on downstream systems).
+        // Legitimate bulk orders go through the separate wholesale inquiry
+        // flow, not this cart checkout.
+        qty: z.number().int().positive().max(100),
         isSubscription: z.boolean().optional(),
         variantName: z.string().optional(),
       }),
