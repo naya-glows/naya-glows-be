@@ -15,7 +15,17 @@ export function verifyPaystackSignature(rawBody: Buffer, signature: string | und
   if (!secret || !signature) return false;
 
   const hash = crypto.createHmac("sha512", secret).update(rawBody).digest("hex");
-  return hash === signature;
+
+  // Constant-time comparison — a plain `===` leaks how many leading bytes
+  // matched via response timing, which (over enough attempts) is a known
+  // attack against hand-rolled signature checks. Lengths must match first:
+  // timingSafeEqual throws on mismatched buffer lengths rather than
+  // returning false, and an attacker-controlled header is never guaranteed
+  // to be valid hex of the right length.
+  const expected = Buffer.from(hash, "hex");
+  const received = Buffer.from(signature, "hex");
+  if (expected.length !== received.length) return false;
+  return crypto.timingSafeEqual(expected, received);
 }
 
 // Idempotent: safe to call from both the verify endpoint (frontend redirect)
@@ -33,7 +43,21 @@ export async function confirmPaystackPayment(reference: string) {
   }
 
   const result = await verifyTransaction(reference);
-  const succeeded = result.status === "success";
+  // Paystack confirming "success" on its own isn't enough — the reference
+  // alone doesn't pin the amount, and the Inline JS call that set it in the
+  // browser is client-side code, interceptable like any other (devtools,
+  // a modified request before the modal opens, etc). Without this check,
+  // someone could tamper with the amount actually sent to Paystack, pay a
+  // fraction of the order total, still get a genuine "success" back for
+  // that smaller charge, and have it accepted as payment in full for the
+  // real order total. Require the amount AND currency Paystack actually
+  // confirms to match what this payment was created for (in kobo, same
+  // unit Paystack reports in) before treating it as paid.
+  const expectedAmountKobo = Math.round(payment.amount * 100);
+  const succeeded =
+    result.status === "success" &&
+    result.amount === expectedAmountKobo &&
+    result.currency === payment.currency;
 
   const updatedPayment = await prisma.payment.update({
     where: { id: payment.id },
