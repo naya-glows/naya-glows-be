@@ -156,7 +156,7 @@ export async function refundOrder(orderId: string, amount?: number) {
   });
   if (!order) throw new AppError("Order not found");
   if (order.status !== "PAID") {
-    throw new AppError("Only a paid order can be refunded — this one is " + order.status.toLowerCase());
+    throw new AppError("Only a paid order can be refunded. This one is " + order.status.toLowerCase());
   }
 
   const payment = order.payments.find((p) => p.status === "SUCCESS" || p.status === "REFUNDED");

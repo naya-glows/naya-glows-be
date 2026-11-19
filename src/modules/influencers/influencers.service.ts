@@ -26,7 +26,7 @@ export async function upgradeToInfluencer(
   if (!codeName) throw new AppError("Please enter a valid influencer code name.");
 
   const codeNameTaken = await prisma.influencer.findUnique({ where: { codeName } });
-  if (codeNameTaken) throw new AppError("That code name is already taken — please choose another.");
+  if (codeNameTaken) throw new AppError("That code name is already taken. Please choose another.");
 
   // The Influencer profile and the role bump happen together so we never
   // end up with one without the other.
@@ -77,7 +77,7 @@ export async function generateReferralCode(userId: string) {
       return prisma.referralCode.create({ data: { code, influencerId: influencer.id } });
     }
   }
-  throw new AppError("Couldn't generate a unique referral code — please try again");
+  throw new AppError("Couldn't generate a unique referral code. Please try again");
 }
 
 export async function listOwnReferralCodes(userId: string) {

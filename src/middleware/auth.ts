@@ -29,7 +29,7 @@ export async function requireAuth(req: AuthedRequest, res: Response, next: NextF
   try {
     const user = await prisma.user.findUnique({ where: { id: payload.userId }, select: { id: true } });
     if (!user) {
-      return res.status(401).json({ error: "This account no longer exists — please sign in again." });
+      return res.status(401).json({ error: "This account no longer exists. Please sign in again." });
     }
   } catch (err) {
     return next(err);

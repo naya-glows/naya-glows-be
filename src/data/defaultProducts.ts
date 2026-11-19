@@ -218,7 +218,7 @@ export const defaultProducts = [
     image: "https://res.cloudinary.com/bhozkz7o/image/upload/v1785160442/naya-glows/recent/radiance-nourishing-body-butter.png",
     tagline: "Rich, whipped daily nourishment",
     description:
-      "A rich, whipped body butter that melts into skin for deep, lasting nourishment — leaving skin soft, supple, and glowing from head to toe.",
+      "A rich, whipped body butter that melts into skin for deep, lasting nourishment, leaving skin soft, supple, and glowing from head to toe.",
     benefits: ["Deep, lasting nourishment", "Soft, supple skin", "Rich, whipped texture"],
   },
   {

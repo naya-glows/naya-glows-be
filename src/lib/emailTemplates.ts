@@ -39,7 +39,7 @@ export function cartReminderEmail(name: string, items: { name: string; qty: numb
     `
     <p>Hi ${name}, you still have items waiting in your Naya Glows cart:</p>
     <ul style="padding-left:20px; margin:16px 0;">${rows}</ul>
-    <p>They won't wait forever — come back and finish checking out whenever you're ready.</p>
+    <p>They won't wait forever, so come back and finish checking out whenever you're ready.</p>
     <p style="margin-top:24px;">
       <a href="https://nayaglows.skin/cart" style="display:inline-block; background:#16241a; color:#fff; text-decoration:none; padding:12px 24px; border-radius:999px; font-weight:600; font-size:13px;">View Your Cart</a>
     </p>
@@ -51,7 +51,7 @@ export function welcomeEmail(name: string) {
   return wrapper(
     "You're In!",
     `
-    <p>Hi ${name}, welcome to Naya Glows — your email is verified and your account is ready to go.</p>
+    <p>Hi ${name}, welcome to Naya Glows. Your email is verified and your account is ready to go.</p>
     <p>Browse the catalog, save your favorites, and track every order from your account page any time.</p>
   `,
   );
@@ -124,7 +124,7 @@ export function subscriptionCodeEmail(items: { name: string; code: string }[]) {
   return wrapper(
     "You've Unlocked a Reorder Discount",
     `
-    <p>Thanks for shopping with Naya Glows! Since you've now bought the product(s) below, you've unlocked a standing discount on every future reorder — no code needed at checkout, it's applied automatically to your account. Keep the code(s) below for your records, or reference them if you're ordering with us directly.</p>
+    <p>Thanks for shopping with Naya Glows! Since you've now bought the product(s) below, you've unlocked a standing discount on every future reorder. No code is needed at checkout: it's applied automatically to your account. Keep the code(s) below for your records, or reference them if you're ordering with us directly.</p>
     ${rows}
     <p style="color:#16241a80; font-size:12px; margin-top:16px;">This discount stays active for as long as you keep this account, on every future purchase of these products.</p>
   `,
@@ -139,19 +139,19 @@ export function subscriptionPlanConfirmationEmail(plan: {
   items: { name: string; qtyPerMonth: number }[];
 }) {
   const rows = plan.items
-    .map((i) => `<li style="margin-bottom:6px;">${i.name} — ${i.qtyPerMonth}/month</li>`)
+    .map((i) => `<li style="margin-bottom:6px;">${i.name}: ${i.qtyPerMonth}/month</li>`)
     .join("");
 
   return wrapper(
     "Your Subscribe & Save Plan Is Confirmed",
     `
-    <p>You're all set on your ${plan.termLabel} Subscribe &amp; Save plan — thank you for choosing to stick with Naya Glows!</p>
+    <p>You're all set on your ${plan.termLabel} Subscribe &amp; Save plan. Thank you for choosing to stick with Naya Glows!</p>
     <ul style="padding-left:20px; margin:16px 0;">${rows}</ul>
     <p style="font-weight:600;">Total paid: ${plan.currency} ${plan.totalPaid.toLocaleString()}</p>
     <p style="margin-top:16px;">
       ${
         plan.fulfillmentMode === "recurring"
-          ? "Your first shipment is on its way now, and we'll automatically send the next one each month for the rest of your plan — no further action needed from you."
+          ? "Your first shipment is on its way now, and we'll automatically send the next one each month for the rest of your plan. No further action is needed from you."
           : "Your full order for this plan is on its way now, all at once."
       }
     </p>
@@ -169,7 +169,7 @@ export function subscriptionShipmentEmail(termLabel: string, items: { name: stri
     `
     <p>This month's shipment from your ${termLabel} Subscribe &amp; Save plan is being prepared:</p>
     <ul style="padding-left:20px; margin:16px 0;">${rows}</ul>
-    <p style="color:#16241a80; font-size:12px;">Already paid for as part of your plan — nothing further to do.</p>
+    <p style="color:#16241a80; font-size:12px;">Already paid for as part of your plan. Nothing further to do.</p>
   `,
   );
 }
@@ -178,7 +178,7 @@ export function orderStatusUpdateEmail(order: { id: string }, stageLabel: string
   return wrapper(
     "Order Update",
     `
-    <p>Good news — your Naya Glows order status just changed to:</p>
+    <p>Good news! Your Naya Glows order status just changed to:</p>
     <p style="font-size:18px; font-weight:600; color:#4f7957; margin:12px 0;">${stageLabel}</p>
     <p style="color:#16241a80; font-size:12px;">Order #${order.id}</p>
     <p style="margin-top:24px;">You can check the full delivery timeline any time on our Track Order page.</p>
@@ -202,12 +202,12 @@ export function subscriptionPlanCancelledEmail(termLabel: string, refundAmount: 
   return wrapper(
     "Subscription Cancelled",
     `
-    <p>Your ${termLabel} Subscribe &amp; Save plan has been cancelled — no further shipments will be sent.</p>
+    <p>Your ${termLabel} Subscribe &amp; Save plan has been cancelled. No further shipments will be sent.</p>
     ${
       refundAmount > 0
         ? `<p style="font-size:18px; font-weight:600; color:#4f7957; margin:12px 0;">${currency} ${refundAmount.toLocaleString()} refunded</p>
            <p style="margin-top:12px;">That covers the months you hadn't received yet. It should reflect back on your original payment method within a few business days.</p>`
-        : `<p style="margin-top:12px;">No refund is due — the full term had already been fulfilled.</p>`
+        : `<p style="margin-top:12px;">No refund is due: the full term had already been fulfilled.</p>`
     }
   `,
   );
@@ -262,7 +262,7 @@ export function wholesaleInquiryAdminNotification(inquiry: {
   return wrapper(
     "New Wholesale Inquiry",
     `
-    <p><strong>${inquiry.businessName}</strong> — ${inquiry.contactName} (${inquiry.email}${inquiry.phone ? `, ${inquiry.phone}` : ""}) is interested in stocking Naya Glows.</p>
+    <p><strong>${inquiry.businessName}</strong>: ${inquiry.contactName} (${inquiry.email}${inquiry.phone ? `, ${inquiry.phone}` : ""}) is interested in stocking Naya Glows.</p>
     ${inquiry.message ? `<p><strong>Message:</strong> ${inquiry.message}</p>` : ""}
   `,
   );
