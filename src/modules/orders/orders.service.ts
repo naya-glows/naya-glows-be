@@ -14,6 +14,15 @@ import { getShippingFeeNgn } from "../settings/settings.service";
 // non-Nigeria visitors, computed from the same amounts.
 const FREE_SHIPPING_THRESHOLD_NGN = 120_000;
 
+// GLOW15 — advertised site-wide (Navbar's announcement bar) as "15% off
+// your first 10 orders". Validity (which code, what %, how many orders) is
+// intentionally hardcoded here rather than a general coupon-admin system —
+// there's exactly one advertised code today; the moment there's a second,
+// this is the place to generalize into a real DiscountCode table.
+const GLOW15_CODE = "GLOW15";
+const GLOW15_PERCENT = 15;
+const GLOW15_MAX_ORDERS = 10;
+
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
@@ -41,6 +50,7 @@ export async function createOrder(input: {
   items: OrderItemInput[];
   shippingDetails: ShippingDetails;
   userId: string;
+  discountCode?: string;
 }) {
   const slugs = input.items.map((i) => i.slug);
   const [products, standingSubscriptionsByProductId] = await Promise.all([
@@ -96,17 +106,42 @@ export async function createOrder(input: {
     };
   });
 
+  // Free-shipping threshold is checked against the pre-discount subtotal —
+  // GLOW15 shouldn't be able to push an order back under the threshold it
+  // already qualified for (or fail to), since shipping cost has nothing to
+  // do with the promo.
   const shipping =
     subtotal >= FREE_SHIPPING_THRESHOLD_NGN
       ? 0
       : await getShippingFeeNgn(input.shippingDetails.country, input.shippingDetails.state);
-  const total = subtotal + shipping;
+
+  let discountCode: string | null = null;
+  let discountAmount = 0;
+  if (input.discountCode) {
+    const normalized = input.discountCode.trim().toUpperCase();
+    if (normalized !== GLOW15_CODE) {
+      throw new AppError("That discount code isn't valid.");
+    }
+    const paidOrderCount = await prisma.order.count({
+      where: { userId: input.userId, status: "PAID" },
+    });
+    if (paidOrderCount >= GLOW15_MAX_ORDERS) {
+      throw new AppError(`${GLOW15_CODE} is only valid for your first ${GLOW15_MAX_ORDERS} orders.`);
+    }
+    discountCode = GLOW15_CODE;
+    discountAmount = round2(subtotal * (GLOW15_PERCENT / 100));
+  }
+
+  const discountedSubtotal = round2(subtotal - discountAmount);
+  const total = discountedSubtotal + shipping;
 
   const order = await prisma.order.create({
     data: {
       userId: input.userId,
       currency: "NGN",
-      subtotal: round2(subtotal),
+      subtotal: discountedSubtotal,
+      discountCode,
+      discountAmount,
       shipping: round2(shipping),
       total: round2(total),
       shippingDetails: input.shippingDetails as unknown as Prisma.InputJsonValue,

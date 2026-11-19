@@ -9,6 +9,7 @@ import {
   createSubscriptionPlanOrder,
   listMyPlans,
   listAllPlansForAdmin,
+  cancelSubscriptionPlan,
 } from "./subscriptionPlans.service";
 import { prisma } from "../../lib/prisma";
 
@@ -99,6 +100,20 @@ subscriptionsRouter.get(
   asyncHandler(async (req: AuthedRequest, res) => {
     const plans = await listMyPlans(req.auth!.userId);
     res.json({ plans });
+  }),
+);
+
+subscriptionsRouter.post(
+  "/plans/:id/cancel",
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    try {
+      const result = await cancelSubscriptionPlan(req.auth!.userId, req.params.id);
+      res.json(result);
+    } catch (err) {
+      if (err instanceof AppError) return res.status(400).json({ error: err.message });
+      throw err;
+    }
   }),
 );
 

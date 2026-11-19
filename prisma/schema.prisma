@@ -165,6 +165,7 @@ enum OrderStatus {
   PAID
   FAILED
   CANCELLED
+  REFUNDED
 }
 
 // Schema only for now — populated once the Paystack phase is built.
@@ -177,8 +178,18 @@ model Order {
   subtotal        Float
   shipping        Float       @default(0)
   total           Float
+  // GLOW15 (or any future code) — set at order-creation time so the exact
+  // code+amount actually applied is on permanent record, independent of
+  // whatever the promo/validity rules say later.
+  discountCode    String?
+  discountAmount  Float       @default(0)
   shippingDetails Json?
   paidAt          DateTime?
+  // Set when any refund (full or partial) has been issued — see Payment's
+  // refundedAmount for how much. status flips to REFUNDED only once the
+  // refunded amount covers the full total; a partial refund keeps status
+  // PAID so fulfillment/tracking isn't disturbed.
+  refundedAt      DateTime?
   // Admin manual override of the tracking stage — when set, overrides the
   // automatic time-based simulation in tracking.ts.
   manualStage     String?
@@ -329,6 +340,7 @@ enum PaymentStatus {
   PENDING
   SUCCESS
   FAILED
+  REFUNDED
 }
 
 // Schema only for now — populated once the Paystack phase is built.
@@ -342,6 +354,11 @@ model Payment {
   currency          String
   status            PaymentStatus @default(PENDING)
   createdAt         DateTime      @default(now())
+  // How much of `amount` has been refunded via Paystack's refund API so
+  // far (0 if none) — tracked separately from `amount` so a partial
+  // refund doesn't lose the original charge amount.
+  refundedAmount    Float         @default(0)
+  refundedAt        DateTime?
 }
 
 // Manual admin-entered expense/income lines for the budget tracker (later phase).

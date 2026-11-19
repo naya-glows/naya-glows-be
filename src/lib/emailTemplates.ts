@@ -186,6 +186,33 @@ export function orderStatusUpdateEmail(order: { id: string }, stageLabel: string
   );
 }
 
+export function refundProcessedEmail(order: { id: string }, amount: number, currency: string, isFull: boolean) {
+  return wrapper(
+    "Refund Processed",
+    `
+    <p>${isFull ? "Your order has been fully refunded." : "A partial refund has been issued for your order."}</p>
+    <p style="font-size:18px; font-weight:600; color:#4f7957; margin:12px 0;">${currency} ${amount.toLocaleString()}</p>
+    <p style="color:#16241a80; font-size:12px;">Order #${order.id}</p>
+    <p style="margin-top:24px;">It should reflect back on your original payment method within a few business days, depending on your bank/card issuer.</p>
+  `,
+  );
+}
+
+export function subscriptionPlanCancelledEmail(termLabel: string, refundAmount: number, currency: string) {
+  return wrapper(
+    "Subscription Cancelled",
+    `
+    <p>Your ${termLabel} Subscribe &amp; Save plan has been cancelled — no further shipments will be sent.</p>
+    ${
+      refundAmount > 0
+        ? `<p style="font-size:18px; font-weight:600; color:#4f7957; margin:12px 0;">${currency} ${refundAmount.toLocaleString()} refunded</p>
+           <p style="margin-top:12px;">That covers the months you hadn't received yet. It should reflect back on your original payment method within a few business days.</p>`
+        : `<p style="margin-top:12px;">No refund is due — the full term had already been fulfilled.</p>`
+    }
+  `,
+  );
+}
+
 export function consultationReceivedEmail(req: { name: string }) {
   return wrapper(
     "We've Got Your Request",

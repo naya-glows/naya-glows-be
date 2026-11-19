@@ -1,6 +1,8 @@
 import type { Prisma, SubscriptionTerm } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../lib/appError";
+import { sendMail } from "../../lib/mailer";
+import { subscriptionPlanCancelledEmail } from "../../lib/emailTemplates";
 import {
   getSubscriptionBDiscountPercent,
   getSubscriptionBFulfillmentMode,
@@ -146,4 +148,45 @@ export function listAllPlansForAdmin() {
     orderBy: { createdAt: "desc" },
     include: { user: { select: { firstName: true, lastName: true, email: true } } },
   });
+}
+
+// Cancels a plan and, for "recurring" mode with shipments still owed,
+// refunds the prepaid-but-unused portion (proportional to however many of
+// the term's months haven't shipped yet). "immediate" mode has nothing to
+// prorate — the whole term's quantity already shipped in one order at
+// purchase time, so cancelling it going forward is just a status flip.
+// Required `refundOrder` is imported lazily (not at module top level) to
+// avoid a circular import with payments.service.ts, which itself imports
+// from this module.
+export async function cancelSubscriptionPlan(userId: string, planId: string) {
+  const plan = await prisma.subscriptionPlan.findUnique({ where: { id: planId } });
+  if (!plan || plan.userId !== userId) throw new AppError("Subscription plan not found");
+  if (plan.status !== "ACTIVE") {
+    throw new AppError(`This plan is already ${plan.status.toLowerCase()}.`);
+  }
+
+  const months = TERM_MONTHS[plan.term];
+  const unusedMonths = plan.remainingShipments; // 0 for "immediate" — nothing unused
+  const refundAmount = unusedMonths > 0 ? round2(plan.totalPaid * (unusedMonths / months)) : 0;
+
+  const updatedPlan = await prisma.subscriptionPlan.update({
+    where: { id: planId },
+    data: { status: "CANCELLED", remainingShipments: 0, nextShipmentDate: null },
+  });
+
+  if (refundAmount > 0 && plan.orderId) {
+    const { refundOrder } = await import("../payments/payments.service");
+    await refundOrder(plan.orderId, refundAmount);
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+  if (user?.email) {
+    sendMail({
+      to: user.email,
+      subject: "Your Subscribe & Save plan has been cancelled",
+      html: subscriptionPlanCancelledEmail(TERM_LABELS[plan.term], refundAmount, "NGN"),
+    }).catch((err) => console.error("[subscriptions] Failed to send cancellation email:", err));
+  }
+
+  return { plan: updatedPlan, refundAmount };
 }

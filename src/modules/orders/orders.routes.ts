@@ -11,6 +11,7 @@ import { computeTracking, TRACKING_STAGE_KEYS } from "./tracking";
 import { requireAuth, requireAdmin, type AuthedRequest } from "../../middleware/auth";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { AppError } from "../../lib/appError";
+import { refundOrder } from "../payments/payments.service";
 
 const shippingDetailsSchema = z.object({
   firstName: z.string().min(1),
@@ -43,6 +44,7 @@ const createOrderSchema = z.object({
     )
     .min(1),
   shippingDetails: shippingDetailsSchema,
+  discountCode: z.string().trim().min(1).max(30).optional(),
 });
 
 export const ordersRouter = Router();
@@ -61,6 +63,7 @@ ordersRouter.post(
         items: parsed.data.items,
         shippingDetails: parsed.data.shippingDetails,
         userId: req.auth!.userId,
+        discountCode: parsed.data.discountCode,
       });
       res.status(201).json({ order });
     } catch (err) {
@@ -138,5 +141,26 @@ adminOrdersRouter.put(
     const order = await setOrderManualStage(req.params.id, parsed.data.stage);
     if (!order) return res.status(404).json({ error: "Order not found" });
     res.json({ order });
+  }),
+);
+
+const refundSchema = z.object({ amount: z.number().positive().optional() });
+
+// amount omitted = full refund of whatever's left unrefunded on this order.
+adminOrdersRouter.post(
+  "/:id/refund",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const parsed = refundSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
+    }
+    try {
+      const result = await refundOrder(req.params.id, parsed.data.amount);
+      res.json(result);
+    } catch (err) {
+      if (err instanceof AppError) return res.status(400).json({ error: err.message });
+      throw err;
+    }
   }),
 );

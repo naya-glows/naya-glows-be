@@ -33,3 +33,39 @@ export async function verifyTransaction(
   }
   return body.data;
 }
+
+type PaystackRefundResponse = {
+  status: boolean;
+  message: string;
+  data?: {
+    transaction_reference: string;
+    amount: number;
+    status: string;
+  };
+};
+
+// `amountKobo` omitted means a full refund of whatever the transaction was
+// actually charged — Paystack looks that up itself from the reference, we
+// never need to (and shouldn't) tell it an amount for a full refund.
+export async function refundTransaction(
+  reference: string,
+  amountKobo?: number,
+): Promise<PaystackRefundResponse["data"]> {
+  const res = await fetch(`${PAYSTACK_BASE_URL}/refund`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${getSecretKey()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      transaction: reference,
+      ...(amountKobo ? { amount: amountKobo } : {}),
+    }),
+  });
+
+  const body = (await res.json()) as PaystackRefundResponse;
+  if (!res.ok || !body.status) {
+    throw new Error(body.message || "Failed to process refund with Paystack");
+  }
+  return body.data;
+}
