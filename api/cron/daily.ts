@@ -3,6 +3,7 @@ import type { IncomingMessage, ServerResponse } from "http";
 import { syncUsdToNgnRate } from "../../src/jobs/fxRateSync";
 import { runAbandonedCartReminders } from "../../src/jobs/cartReminders";
 import { runSubscriptionShipments } from "../../src/jobs/subscriptionShipments";
+import { reconcileStalePendingOrders } from "../../src/modules/payments/payments.service";
 
 // Single daily cron entry point covering all three background jobs that
 // used to run on setInterval timers inside the always-on Railway/Render
@@ -23,9 +24,10 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     syncUsdToNgnRate(),
     runAbandonedCartReminders(),
     runSubscriptionShipments(),
+    reconcileStalePendingOrders(),
   ]);
 
-  const names = ["fx-rate-sync", "cart-reminders", "subscription-shipments"];
+  const names = ["fx-rate-sync", "cart-reminders", "subscription-shipments", "reconcile-pending-orders"];
   results.forEach((r, i) => {
     if (r.status === "rejected") {
       console.error(`[cron:daily] ${names[i]} failed:`, r.reason);

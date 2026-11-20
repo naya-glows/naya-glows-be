@@ -65,10 +65,29 @@ export async function confirmPaystackPayment(reference: string) {
     result.amount === expectedAmountKobo &&
     result.currency === payment.currency;
 
-  const updatedPayment = await prisma.payment.update({
-    where: { id: payment.id },
+  // Atomic claim, not a plain update: the webhook and the frontend's own
+  // /verify call can both reach this point within the same race window
+  // (both passed the `status === "SUCCESS"` check above before either
+  // wrote anything). `updateMany` with this `where` only matches — and
+  // only returns count 1 for — whichever call's UPDATE statement the DB
+  // actually applies first; the loser sees the row already moved out of
+  // its pre-claim state and backs off instead of re-running the order
+  // update and side effects (duplicate confirmation email, double
+  // Subscription A enrollment) below.
+  const claim = await prisma.payment.updateMany({
+    where: { id: payment.id, status: { not: "SUCCESS" } },
     data: { status: succeeded ? "SUCCESS" : "FAILED" },
   });
+
+  if (claim.count === 0) {
+    const [currentPayment, currentOrder] = await Promise.all([
+      prisma.payment.findUniqueOrThrow({ where: { id: payment.id } }),
+      prisma.order.findUniqueOrThrow({ where: { id: payment.orderId } }),
+    ]);
+    return { payment: currentPayment, order: currentOrder };
+  }
+
+  const updatedPayment = await prisma.payment.findUniqueOrThrow({ where: { id: payment.id } });
 
   const updatedOrder = await prisma.order.update({
     where: { id: payment.orderId },
@@ -144,6 +163,45 @@ export async function confirmPaystackPayment(reference: string) {
   }
 
   return { payment: updatedPayment, order: updatedOrder };
+}
+
+// Fallback for the gap where neither of the two normal confirmation paths
+// ever fires: Paystack's webhook delivery fails (or, right after a hosting
+// migration, is briefly misconfigured) AND the customer's browser never
+// completes its own /verify call (closed tab, crash, dropped connection
+// right after paying). Without this, such an order sits PENDING forever
+// even though the card was actually charged. Run from the daily cron —
+// confirmPaystackPayment already re-verifies against Paystack and is
+// idempotent/atomically-claimed, so calling it here is exactly as safe as
+// the webhook or /verify calling it.
+const STALE_PENDING_THRESHOLD_MS = 20 * 60 * 1000;
+
+export async function reconcileStalePendingOrders() {
+  const cutoff = new Date(Date.now() - STALE_PENDING_THRESHOLD_MS);
+  const stale = await prisma.payment.findMany({
+    where: {
+      status: "PENDING",
+      providerReference: { not: null },
+      createdAt: { lt: cutoff },
+      order: { status: "PENDING" },
+    },
+    select: { providerReference: true },
+  });
+
+  let resolved = 0;
+  for (const { providerReference } of stale) {
+    try {
+      const result = await confirmPaystackPayment(providerReference!);
+      if (result?.payment.status === "SUCCESS" || result?.payment.status === "FAILED") resolved += 1;
+    } catch (err) {
+      console.error(`[reconcile] Failed checking reference=${providerReference}:`, err);
+    }
+  }
+
+  if (stale.length > 0) {
+    console.log(`[reconcile] Checked ${stale.length} stale-pending order(s), resolved ${resolved}.`);
+  }
+  return { checked: stale.length, resolved };
 }
 
 // `amount` (Naira) is optional — omitted means a full refund of the order's
