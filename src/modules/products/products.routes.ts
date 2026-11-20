@@ -9,6 +9,7 @@ import {
 } from "./products.service";
 import { requireAdmin } from "../../middleware/auth";
 import { asyncHandler } from "../../lib/asyncHandler";
+import { toSetchProduct, pushProductsToSetch, deleteProductFromSetch } from "../../lib/setch";
 
 const router = Router();
 
@@ -58,6 +59,16 @@ router.post(
     }
     const product = await createProduct(parsed.data);
     res.status(201).json({ product });
+
+    // Awaited (not fire-and-forget) despite happening after the response —
+    // on Vercel's serverless runtime, work started but not awaited can be
+    // killed the moment the response is sent, unlike the always-on process
+    // this ran on before. This still doesn't delay anything the admin sees.
+    if (product.isActive) {
+      await pushProductsToSetch([toSetchProduct(product)]).catch((err) =>
+        console.error("[setch] Failed to push new product:", err),
+      );
+    }
   }),
 );
 
@@ -72,6 +83,19 @@ router.put(
     try {
       const product = await updateProduct(req.params.slug, parsed.data);
       res.json({ product });
+
+      // isActive:false means hidden from the storefront entirely, so it's
+      // treated the same as a delete here — Setch should never recommend
+      // something that isn't actually purchasable on-site.
+      if (product.isActive) {
+        await pushProductsToSetch([toSetchProduct(product)]).catch((err) =>
+          console.error("[setch] Failed to push updated product:", err),
+        );
+      } else {
+        await deleteProductFromSetch(product.slug).catch((err) =>
+          console.error("[setch] Failed to remove deactivated product:", err),
+        );
+      }
     } catch {
       res.status(404).json({ error: "Product not found" });
     }
@@ -85,6 +109,9 @@ router.delete(
     try {
       await deleteProduct(req.params.slug);
       res.status(204).send();
+      await deleteProductFromSetch(req.params.slug).catch((err) =>
+        console.error("[setch] Failed to remove deleted product:", err),
+      );
     } catch {
       res.status(404).json({ error: "Product not found" });
     }
