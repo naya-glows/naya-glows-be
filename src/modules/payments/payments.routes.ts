@@ -5,15 +5,21 @@ import { prisma } from "../../lib/prisma";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { requireAuth, type AuthedRequest } from "../../middleware/auth";
 import { confirmPaystackPayment } from "./payments.service";
+import { initializeTransaction } from "./paystack";
 
 export const paymentsRouter = Router();
 
 const initializeSchema = z.object({ orderId: z.string().min(1) });
 
-// Creates the pending Payment row + a reference the frontend hands straight
-// to Paystack's Inline JS (no server-to-server "initialize transaction" call
-// needed for that flow — Inline opens its own modal/iframe directly from the
-// public key). The secret key is only ever used server-side, in `verify`.
+// Creates the pending Payment row, then asks Paystack to start the
+// transaction on ITS hosted checkout page (a redirect, not the old Inline JS
+// popup) — Inline's iframe is a documented failure mode: it can hang
+// indefinitely mid-3-D-Secure/OTP with neither its success nor cancel
+// callback ever firing, leaving the customer on a frozen "placing order"
+// screen with no way to tell whether they were charged (confirmed in
+// production on a sister project, same provider, same SDK). A redirect to
+// Paystack's own page can't get stuck that way — the customer always ends
+// up back on /checkout/verify (see callback_url below) one way or another.
 //
 // Both routes require auth and check order ownership — an order ID alone
 // (a cuid) shouldn't be enough for anyone to read another customer's email/
@@ -54,7 +60,21 @@ paymentsRouter.post(
       },
     });
 
-    res.json({ reference, email, amount: order.total, currency: order.currency });
+    // The first entry in CORS_ORIGIN is this app's own canonical frontend
+    // origin (see app.ts — it's required, comma-separated when there's more
+    // than one, e.g. a preview URL alongside the real domain), so this
+    // always lands back on the right host for whichever environment is
+    // actually running, local dev included, with no separate env var.
+    const frontendOrigin = process.env.CORS_ORIGIN!.split(",")[0].trim();
+    const { authorization_url: authorizationUrl } = await initializeTransaction({
+      email,
+      amountKobo: Math.round(order.total * 100),
+      currency: order.currency,
+      reference,
+      callbackUrl: `${frontendOrigin}/checkout/verify`,
+    });
+
+    res.json({ authorizationUrl });
   }),
 );
 

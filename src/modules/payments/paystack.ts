@@ -34,6 +34,47 @@ export async function verifyTransaction(
   return body.data;
 }
 
+type PaystackInitializeResponse = {
+  status: boolean;
+  message: string;
+  data: {
+    authorization_url: string;
+    access_code: string;
+    reference: string;
+  };
+};
+
+// Starts a transaction on Paystack's hosted checkout page (a redirect flow)
+// rather than the old Inline JS popup — see the checkout route for why.
+export async function initializeTransaction(opts: {
+  email: string;
+  amountKobo: number;
+  currency: string;
+  reference: string;
+  callbackUrl: string;
+}): Promise<PaystackInitializeResponse["data"]> {
+  const res = await fetch(`${PAYSTACK_BASE_URL}/transaction/initialize`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${getSecretKey()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      email: opts.email,
+      amount: opts.amountKobo,
+      currency: opts.currency,
+      reference: opts.reference,
+      callback_url: opts.callbackUrl,
+    }),
+  });
+
+  const body = (await res.json()) as PaystackInitializeResponse;
+  if (!res.ok || !body.status) {
+    throw new Error(body.message || "Failed to initialize Paystack transaction");
+  }
+  return body.data;
+}
+
 type PaystackRefundResponse = {
   status: boolean;
   message: string;
