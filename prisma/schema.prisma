@@ -37,6 +37,7 @@ model User {
   cart          Cart?
   productSubscriptions ProductSubscription[]
   subscriptionPlans    SubscriptionPlan[]
+  kitEnrollments       KitEnrollment[]
 
   // Present only on INFLUENCER-role users.
   influencer Influencer?
@@ -123,12 +124,157 @@ model Product {
   variants      Json?
   isActive      Boolean  @default(true)
   inStock       Boolean  @default(true)
+  // Set only on the synthetic Product row a Combo upserts for itself (see
+  // Combo below) — lets order/email/tracking code that expects a real
+  // Product keep working unmodified for a bundle, while still being able to
+  // tell "this line item is actually a combo" apart from a retail product
+  // when it matters (e.g. admin order detail).
+  isCombo          Boolean  @default(false)
+  comboProductSlugs String[] @default([])
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   orderItems    OrderItem[]
   savedByUsers  SavedProduct[]
   subscriptions ProductSubscription[]
+}
+
+// An admin-defined bundle of 2+ existing products sold as one fixed-price
+// item (e.g. "Ambrosia combo"). Kept as its own model (name, description,
+// cover image, which products) so the admin UI has a clean place to manage
+// it, but every Combo also upserts a matching Product row (slug-matched,
+// isCombo: true) the moment it's created/updated — that's what actually
+// lets it be added to cart, checked out, paid for, tracked, and shown in
+// order history through the exact same pipeline as any other product,
+// with zero changes to cartSlice, createOrder, email templates, or the
+// admin orders page.
+model Combo {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  name         String
+  description  String
+  coverImage   String?
+  price        Float
+  productSlugs String[]
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// A time-boxed discount campaign (Black Friday, Independence Day, etc.) —
+// reusable season to season per the brief's own requirement ("not
+// permanently tied to Black Friday"). `productSlugs` empty means storewide;
+// otherwise only those products/combos show the discount and appear on the
+// campaign's own landing page at /sale/[slug].
+model SeasonalSale {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  name            String
+  discountPercent Float
+  productSlugs    String[] @default([])
+  startDate       DateTime
+  endDate         DateTime
+  isActive        Boolean  @default(true)
+  bannerHeadline  String
+  bannerCopy      String
+  bannerImage     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// Config for the seasonal promotional pop-up + spin-to-win mechanic —
+// everything the brief asks to be editable without a rebuild (graphic,
+// copy, prize odds, dates, social links, popup frequency) lives here as one
+// admin-managed row per campaign.
+model Campaign {
+  id                String   @id @default(cuid())
+  name              String
+  isActive          Boolean  @default(false)
+  startDate         DateTime
+  endDate           DateTime
+  popupHeadline     String
+  popupCopy         String
+  popupImage        String?
+  ctaText           String
+  // Where "browse and purchase" sends the visitor after claiming a prize —
+  // normally a SeasonalSale's slug, e.g. "/sale/black-friday".
+  landingPath       String
+  // [{ label, weight, rewardType: "discount_code" | "message", rewardValue }]
+  prizes            Json
+  // [{ platform, url }]
+  socialLinks       Json
+  // Don't show the popup again to the same visitor for this many days after
+  // it's been shown/dismissed once (brief: "frequency controls").
+  popupFrequencyDays Int     @default(7)
+  consentText       String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  leads Lead[]
+}
+
+// A spin-to-win lead — captured once, exportable by admin (brief: "leads
+// are exportable"). Not linked to a User; this is a marketing capture, not
+// an account, since the visitor hasn't signed up for anything yet.
+model Lead {
+  id           String   @id @default(cuid())
+  campaignId   String
+  campaign     Campaign @relation(fields: [campaignId], references: [id])
+  fullName     String
+  phone        String
+  address      String
+  email        String?
+  socialHandle String?
+  prizeWon     String
+  consentGiven Boolean  @default(false)
+  createdAt    DateTime @default(now())
+}
+
+enum KitEnrollmentStatus {
+  ACTIVE
+  EXPIRED
+}
+
+// The four curated subscription/treatment packages (Bronze/Silver/Gold/
+// Premium) from the brief — admin-editable per requirement 7 ("package
+// pricing through the website admin/CMS"), distinct from the existing
+// Subscribe & Save (SubscriptionPlan/ProductSubscription) system since
+// these are fixed service packages, not a build-your-own product bundle.
+model TreatmentKit {
+  id                      String   @id @default(cuid())
+  slug                    String   @unique
+  name                    String
+  durationMonths          Int
+  price                   Float
+  benefits                String[]
+  // Premium's "three months past subscription" extension — the brief itself
+  // flags this wording as unconfirmed, so the public page shows a
+  // "Missing details" note next to it rather than guessing at the phrasing.
+  extraMonths             Int      @default(0)
+  consultationEveryMonths Int?
+  specialistAccessMonthly Boolean  @default(false)
+  isActive                Boolean  @default(true)
+  sortOrder               Int      @default(0)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  enrollments KitEnrollment[]
+}
+
+// A customer's purchase of a TreatmentKit — tracks the ongoing service
+// window (consultation access, specialist check-ins) a kit purchase
+// entitles them to, separate from the one-time Order that captured payment.
+model KitEnrollment {
+  id        String              @id @default(cuid())
+  userId    String
+  user      User                @relation(fields: [userId], references: [id])
+  kitId     String
+  kit       TreatmentKit        @relation(fields: [kitId], references: [id])
+  orderId   String
+  startDate DateTime            @default(now())
+  endDate   DateTime
+  status    KitEnrollmentStatus @default(ACTIVE)
+  createdAt DateTime            @default(now())
 }
 
 model SavedProduct {
@@ -295,6 +441,21 @@ model ConsultationRequest {
   message       String?
   status        String    @default("NEW")
   createdAt     DateTime  @default(now())
+
+  // The brief asks for a paid, prominent booking step (₦10,000) rather than
+  // a free inquiry — reuses paystack.ts's initializeTransaction/
+  // verifyTransaction directly (provider-agnostic) rather than the Order-
+  // coupled Payment model, since this is a public/unauthenticated flow with
+  // no Order behind it.
+  feeNgn          Int     @default(10000)
+  paymentReference String? @unique
+  paid            Boolean @default(false)
+}
+
+enum BusinessInquiryType {
+  WHOLESALE
+  CORPORATE_GIFTING
+  WHITE_LABEL
 }
 
 model WholesaleInquiry {
@@ -306,6 +467,16 @@ model WholesaleInquiry {
   message      String?
   status       String   @default("NEW")
   createdAt    DateTime @default(now())
+
+  // Generalized to cover all three business-enquiry directory entries from
+  // the brief (Wholesale, Corporate Gifting, White-Label) sharing one model
+  // and one admin inbox rather than three near-identical tables.
+  type              BusinessInquiryType @default(WHOLESALE)
+  estimatedQuantity String?
+  budget            String?
+  // Corporate Gifting-specific ("deadline for gifting") — null for the
+  // other two types.
+  deadline          DateTime?
 }
 
 model ContactMessage {

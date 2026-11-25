@@ -53,11 +53,29 @@ export async function createOrder(input: {
   discountCode?: string;
 }) {
   const slugs = input.items.map((i) => i.slug);
-  const [products, standingSubscriptionsByProductId] = await Promise.all([
+  const now = new Date();
+  const [products, standingSubscriptionsByProductId, activeSales] = await Promise.all([
     prisma.product.findMany({ where: { slug: { in: slugs } } }),
     getMyActiveProductSubscriptionsByProductId(input.userId),
+    prisma.seasonalSale.findMany({
+      where: { isActive: true, startDate: { lte: now }, endDate: { gte: now } },
+    }),
   ]);
   const productBySlug = new Map(products.map((p) => [p.slug, p]));
+
+  // Automatic, not a code — a SeasonalSale with no productSlugs is
+  // storewide; otherwise only the listed slugs qualify. If more than one
+  // active campaign covers the same product, the better discount wins
+  // rather than stacking (stacking is only for the standing Subscription A
+  // discount below, which is unrelated to seasonal campaigns).
+  function saleDiscountPercentFor(slug: string): number {
+    let best = 0;
+    for (const sale of activeSales) {
+      const applies = sale.productSlugs.length === 0 || sale.productSlugs.includes(slug);
+      if (applies && sale.discountPercent > best) best = sale.discountPercent;
+    }
+    return best;
+  }
 
   const missing = slugs.filter((s) => !productBySlug.has(s));
   if (missing.length > 0) {
@@ -95,7 +113,9 @@ export async function createOrder(input: {
     // no standing subscription exists yet, i.e. this IS the qualifying
     // first purchase, which is deliberately never discounted).
     const standing = standingSubscriptionsByProductId.get(product.id);
-    const unitPrice = standing ? round2(basePrice * (1 - standing.discountPercent / 100)) : basePrice;
+    let unitPrice = standing ? round2(basePrice * (1 - standing.discountPercent / 100)) : basePrice;
+    const saleDiscount = saleDiscountPercentFor(product.slug);
+    if (saleDiscount > 0) unitPrice = round2(unitPrice * (1 - saleDiscount / 100));
     subtotal += unitPrice * qty;
     return {
       productId: product.id,

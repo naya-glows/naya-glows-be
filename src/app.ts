@@ -19,6 +19,8 @@ import { adminBudgetRouter } from "./modules/budget/budget.routes";
 import { influencersRouter, adminInfluencersRouter } from "./modules/influencers/influencers.routes";
 import { cartRouter } from "./modules/cart/cart.routes";
 import { subscriptionsRouter, adminSubscriptionsRouter } from "./modules/subscriptions/subscriptions.routes";
+import combosRoutes, { adminCombosRouter } from "./modules/combos/combos.routes";
+import salesRoutes, { adminSalesRouter } from "./modules/sales/sales.routes";
 import type { AuthedRequest } from "./middleware/auth";
 
 export function createApp() {
@@ -94,6 +96,10 @@ export function createApp() {
   app.use("/cart", cartRouter);
   app.use("/subscriptions", subscriptionsRouter);
   app.use("/admin/subscriptions", adminSubscriptionsRouter);
+  app.use("/combos", combosRoutes);
+  app.use("/admin/combos", adminCombosRouter);
+  app.use("/sales", salesRoutes);
+  app.use("/admin/sales", adminSalesRouter);
 
   app.use((_req, res) => {
     res.status(404).json({ error: "Not found" });

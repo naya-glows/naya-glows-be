@@ -5,6 +5,7 @@ import { runAbandonedCartReminders } from "../../src/jobs/cartReminders";
 import { runSubscriptionShipments } from "../../src/jobs/subscriptionShipments";
 import { reconcileStalePendingOrders } from "../../src/modules/payments/payments.service";
 import { syncAllProductsToSetch } from "../../src/lib/setch";
+import { deactivateExpiredSales } from "../../src/modules/sales/sales.service";
 
 // Single daily cron entry point covering all three background jobs that
 // used to run on setInterval timers inside the always-on Railway/Render
@@ -27,6 +28,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     runSubscriptionShipments(),
     reconcileStalePendingOrders(),
     syncAllProductsToSetch(),
+    deactivateExpiredSales(),
   ]);
 
   const names = [
@@ -35,6 +37,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     "subscription-shipments",
     "reconcile-pending-orders",
     "setch-catalog-sync",
+    "deactivate-expired-sales",
   ];
   results.forEach((r, i) => {
     if (r.status === "rejected") {
