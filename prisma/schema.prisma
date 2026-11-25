@@ -569,6 +569,14 @@ model WholesaleInquiry {
   // Corporate Gifting-specific ("deadline for gifting") — null for the
   // other two types.
   deadline          DateTime?
+
+  // White-Label-specific: a ₦50,000 product-development consultation fee
+  // paid before we proceed. feeNgn is set at creation time (WHITE_LABEL
+  // only); Wholesale/Corporate Gifting leave it null and paid stays false
+  // forever, same no-payment story as reservations/consultations.
+  feeNgn            Int?
+  paid              Boolean  @default(false)
+  paymentReference  String?  @unique
 }
 
 model ContactMessage {

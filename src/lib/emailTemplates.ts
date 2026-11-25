@@ -306,17 +306,31 @@ export function contactMessageAdminNotification(msg: {
   );
 }
 
+const BUSINESS_INQUIRY_LABELS: Record<string, string> = {
+  WHOLESALE: "Wholesale",
+  CORPORATE_GIFTING: "Corporate Gifting",
+  WHITE_LABEL: "White-Label",
+};
+
 export function wholesaleInquiryAdminNotification(inquiry: {
   businessName: string;
   contactName: string;
   email: string;
   phone?: string | null;
   message?: string | null;
+  type?: string;
+  estimatedQuantity?: string | null;
+  budget?: string | null;
+  deadline?: Date | null;
 }) {
+  const label = BUSINESS_INQUIRY_LABELS[inquiry.type ?? "WHOLESALE"] ?? "Wholesale";
   return wrapper(
-    "New Wholesale Inquiry",
+    `New ${label} Inquiry`,
     `
-    <p><strong>${inquiry.businessName}</strong>: ${inquiry.contactName} (${inquiry.email}${inquiry.phone ? `, ${inquiry.phone}` : ""}) is interested in stocking Naya Glows.</p>
+    <p><strong>${inquiry.businessName}</strong>: ${inquiry.contactName} (${inquiry.email}${inquiry.phone ? `, ${inquiry.phone}` : ""}) submitted a ${label} inquiry.</p>
+    ${inquiry.estimatedQuantity ? `<p><strong>Estimated quantity:</strong> ${inquiry.estimatedQuantity}</p>` : ""}
+    ${inquiry.budget ? `<p><strong>Budget:</strong> ${inquiry.budget}</p>` : ""}
+    ${inquiry.deadline ? `<p><strong>Deadline:</strong> ${new Date(inquiry.deadline).toLocaleDateString()}</p>` : ""}
     ${inquiry.message ? `<p><strong>Message:</strong> ${inquiry.message}</p>` : ""}
   `,
   );
