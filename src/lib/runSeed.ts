@@ -6,6 +6,15 @@ import { defaultProducts } from "../data/defaultProducts";
 // "Black Friday Early Reservation Feature" brief. A ₦5,000 deposit now,
 // balance due on Black Friday itself (see reservations.service.ts's
 // BLACK_FRIDAY_BALANCE_DUE_DATE).
+// Real, client-supplied consultation services — "Standard Consultation:
+// ₦10,000 – 30 minutes" and "Extended Consultation: ₦20,000 – Extended
+// session" (no exact duration given for Extended; 60 minutes is a
+// reasonable default, admin-editable via /admin/consultations).
+const defaultConsultationTypes = [
+  { slug: "standard", name: "Standard Consultation", feeNgn: 10000, durationMinutes: 30, sortOrder: 0 },
+  { slug: "extended", name: "Extended Consultation", feeNgn: 20000, durationMinutes: 60, sortOrder: 1 },
+];
+
 const defaultReservationKits = [
   { slug: "spot-fade-kit", name: "Spot Fade Kit", totalPrice: 29500, depositAmount: 5000, publicPrice: null, sortOrder: 0 },
   { slug: "acne-clear-fade-kit", name: "Acne Clear + Fade Kit", totalPrice: 31000, depositAmount: 5000, publicPrice: null, sortOrder: 1 },
@@ -66,6 +75,19 @@ async function seedProducts() {
   console.log(`[seed] Seeded/verified ${created} default products.`);
 }
 
+async function seedConsultationTypes() {
+  let created = 0;
+  for (const type of defaultConsultationTypes) {
+    await prisma.consultationType.upsert({
+      where: { slug: type.slug },
+      update: {},
+      create: type,
+    });
+    created += 1;
+  }
+  console.log(`[seed] Seeded/verified ${created} consultation types.`);
+}
+
 async function seedReservationKits() {
   let created = 0;
   for (const kit of defaultReservationKits) {
@@ -89,5 +111,6 @@ async function seedReservationKits() {
 export async function runSeed() {
   await seedAdmin();
   await seedProducts();
+  await seedConsultationTypes();
   await seedReservationKits();
 }

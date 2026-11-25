@@ -237,10 +237,34 @@ export function subscriptionPlanCancelledEmail(termLabel: string, refundAmount: 
   );
 }
 
-export function consultationReceivedEmail(req: { name: string }) {
+export function consultationReceivedEmail(req: {
+  name: string;
+  bookingReference?: string | null;
+  scheduledDate?: Date | null;
+  durationMinutes?: number | null;
+  feeNgn?: number;
+  consultationType?: { name: string } | null;
+}) {
+  const hasSlot = req.scheduledDate && req.consultationType;
   return wrapper(
     "We've Got Your Request",
-    `<p>Hi ${req.name}, thanks for booking a skincare consultation with Naya Glows. Our team will reach out shortly to schedule your session.</p>`,
+    `
+    <p>Hi ${req.name}, thanks for booking a skincare consultation with Naya Glows.</p>
+    ${
+      hasSlot
+        ? `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0; font-size:13px;">
+      <tr><td style="padding:6px 0; color:#16241a80;">Consultation</td><td style="padding:6px 0; text-align:right; font-weight:600;">${req.consultationType!.name}</td></tr>
+      <tr><td style="padding:6px 0; color:#16241a80;">Date &amp; time</td><td style="padding:6px 0; text-align:right;">${req.scheduledDate!.toLocaleString("en-NG", { dateStyle: "long", timeStyle: "short", timeZone: "UTC" })}</td></tr>
+      <tr><td style="padding:6px 0; color:#16241a80;">Duration</td><td style="padding:6px 0; text-align:right;">${req.durationMinutes} minutes</td></tr>
+      <tr><td style="padding:6px 0; color:#16241a80;">Fee</td><td style="padding:6px 0; text-align:right;">₦${req.feeNgn?.toLocaleString()}</td></tr>
+      ${req.bookingReference ? `<tr><td style="padding:6px 0; color:#16241a80;">Reference</td><td style="padding:6px 0; text-align:right; font-weight:600;">${req.bookingReference}</td></tr>` : ""}
+    </table>
+    <p>Complete payment to confirm your slot — you'll get a final confirmation once that's done.</p>
+    `
+        : `<p>Our team will reach out shortly to schedule your session.</p>`
+    }
+  `,
   );
 }
 
@@ -250,11 +274,17 @@ export function consultationAdminNotification(req: {
   phone?: string | null;
   skinConcern: string;
   message?: string | null;
+  bookingReference?: string | null;
+  scheduledDate?: Date | null;
+  consultationType?: { name: string } | null;
 }) {
   return wrapper(
     "New Consultation Request",
     `
     <p><strong>${req.name}</strong> (${req.email}${req.phone ? `, ${req.phone}` : ""}) requested a consultation.</p>
+    ${req.consultationType ? `<p><strong>Type:</strong> ${req.consultationType.name}</p>` : ""}
+    ${req.scheduledDate ? `<p><strong>When:</strong> ${req.scheduledDate.toLocaleString("en-NG", { dateStyle: "long", timeStyle: "short", timeZone: "UTC" })}</p>` : ""}
+    ${req.bookingReference ? `<p><strong>Reference:</strong> ${req.bookingReference}</p>` : ""}
     <p><strong>Skin concern:</strong> ${req.skinConcern}</p>
     ${req.message ? `<p><strong>Message:</strong> ${req.message}</p>` : ""}
   `,

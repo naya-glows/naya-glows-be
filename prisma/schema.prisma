@@ -481,6 +481,33 @@ model SubscriptionPlan {
   orders Order[]
 }
 
+// The two bookable services from the client's final brief — Standard
+// (₦10,000/30min) and Extended (₦20,000, duration admin-set since the brief
+// didn't give an exact figure for "Extended session").
+model ConsultationType {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  name            String
+  feeNgn          Int
+  durationMinutes Int
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+
+  requests ConsultationRequest[]
+}
+
+// Admin-set unavailability — a whole day (startTime/endTime both null) or a
+// specific time range within a day, per "Allow us to block off dates or
+// time slots when we are unavailable."
+model ConsultationBlock {
+  id        String   @id @default(cuid())
+  date      DateTime
+  startTime String?
+  endTime   String?
+  reason    String?
+  createdAt DateTime @default(now())
+}
+
 model ConsultationRequest {
   id            String    @id @default(cuid())
   name          String
@@ -492,14 +519,29 @@ model ConsultationRequest {
   status        String    @default("NEW")
   createdAt     DateTime  @default(now())
 
-  // The brief asks for a paid, prominent booking step (₦10,000) rather than
-  // a free inquiry — reuses paystack.ts's initializeTransaction/
-  // verifyTransaction directly (provider-agnostic) rather than the Order-
-  // coupled Payment model, since this is a public/unauthenticated flow with
-  // no Order behind it.
+  // The brief asks for a paid, prominent booking step rather than a free
+  // inquiry — reuses paystack.ts's initializeTransaction/verifyTransaction
+  // directly (provider-agnostic) rather than the Order-coupled Payment
+  // model, since this is a public/unauthenticated flow with no Order behind
+  // it. feeNgn/durationMinutes are snapshotted from the chosen
+  // ConsultationType at booking time, same reasoning as SubscriptionPlan's
+  // own snapshotting — a later admin price change shouldn't retroactively
+  // alter an already-booked appointment.
   feeNgn          Int     @default(10000)
   paymentReference String? @unique
   paid            Boolean @default(false)
+
+  consultationTypeId String?
+  consultationType   ConsultationType? @relation(fields: [consultationTypeId], references: [id])
+  // The actual booked slot's start time — distinct from `preferredDate`,
+  // which predates the real calendar and is now just a legacy free-text
+  // hint kept for old rows.
+  scheduledDate   DateTime?
+  durationMinutes Int?
+  // Short, human-readable code shown on the confirmation page/email and
+  // usable as a support reference ("generate a booking reference for each
+  // appointment").
+  bookingReference String? @unique
 }
 
 enum BusinessInquiryType {
