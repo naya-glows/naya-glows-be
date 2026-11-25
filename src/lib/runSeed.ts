@@ -2,6 +2,16 @@ import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import { defaultProducts } from "../data/defaultProducts";
 
+// Real, client-supplied Black Friday reservation kits (not placeholders) —
+// "Black Friday Early Reservation Feature" brief. A ₦5,000 deposit now,
+// balance due on Black Friday itself (see reservations.service.ts's
+// BLACK_FRIDAY_BALANCE_DUE_DATE).
+const defaultReservationKits = [
+  { slug: "spot-fade-kit", name: "Spot Fade Kit", totalPrice: 29500, depositAmount: 5000, publicPrice: null, sortOrder: 0 },
+  { slug: "acne-clear-fade-kit", name: "Acne Clear + Fade Kit", totalPrice: 31000, depositAmount: 5000, publicPrice: null, sortOrder: 1 },
+  { slug: "body-glow-set", name: "Body Glow Set (Full Kit)", totalPrice: 60000, depositAmount: 5000, publicPrice: 63000, sortOrder: 2 },
+];
+
 async function seedAdmin() {
   const email = process.env.SEED_ADMIN_EMAIL;
   if (!email) {
@@ -56,14 +66,28 @@ async function seedProducts() {
   console.log(`[seed] Seeded/verified ${created} default products.`);
 }
 
-// Idempotent (seedAdmin skips if the email already exists, seedProducts
-// upserts without overwriting) — safe to call on every server boot, not
-// just once manually. Called from src/index.ts on every startup so seeding
-// can never again depend on someone remembering to run `npm run seed`
-// against production, or on Railway's dashboard Start Command happening to
-// invoke it — see prisma/seed.ts for the manual-run CLI entry point, which
-// calls this same function.
+async function seedReservationKits() {
+  let created = 0;
+  for (const kit of defaultReservationKits) {
+    await prisma.reservationKit.upsert({
+      where: { slug: kit.slug },
+      update: {},
+      create: kit,
+    });
+    created += 1;
+  }
+  console.log(`[seed] Seeded/verified ${created} Black Friday reservation kits.`);
+}
+
+// Idempotent (seedAdmin skips if the email already exists, seedProducts/
+// seedReservationKits upsert without overwriting) — safe to call on every
+// server boot, not just once manually. Called from src/index.ts on every
+// startup so seeding can never again depend on someone remembering to run
+// `npm run seed` against production, or on Railway's dashboard Start Command
+// happening to invoke it — see prisma/seed.ts for the manual-run CLI entry
+// point, which calls this same function.
 export async function runSeed() {
   await seedAdmin();
   await seedProducts();
+  await seedReservationKits();
 }

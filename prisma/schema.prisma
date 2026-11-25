@@ -241,22 +241,24 @@ enum KitEnrollmentStatus {
 // Subscribe & Save (SubscriptionPlan/ProductSubscription) system since
 // these are fixed service packages, not a build-your-own product bundle.
 model TreatmentKit {
-  id                      String   @id @default(cuid())
-  slug                    String   @unique
-  name                    String
-  durationMonths          Int
-  price                   Float
-  benefits                String[]
-  // Premium's "three months past subscription" extension — the brief itself
-  // flags this wording as unconfirmed, so the public page shows a
-  // "Missing details" note next to it rather than guessing at the phrasing.
-  extraMonths             Int      @default(0)
-  consultationEveryMonths Int?
-  specialistAccessMonthly Boolean  @default(false)
-  isActive                Boolean  @default(true)
-  sortOrder               Int      @default(0)
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  name           String
+  durationMonths Int
+  price          Float
+  // Plain bullet points — e.g. Premium's final, client-supplied copy is
+  // "12 Months of Skincare Supply", "3 Months of Complimentary Spa
+  // Experiences", "3 Months of Skin Specialist Support" (positioned as
+  // ongoing guidance, not formal consultation appointments). Kept as free
+  // text rather than separate structured fields (an earlier draft of this
+  // schema had extraMonths/consultationEveryMonths/specialistAccessMonthly)
+  // since the real benefits turned out to vary in shape per package and
+  // read better as plain bullets anyway.
+  benefits  String[]
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   enrollments KitEnrollment[]
 }
@@ -275,6 +277,54 @@ model KitEnrollment {
   endDate   DateTime
   status    KitEnrollmentStatus @default(ACTIVE)
   createdAt DateTime            @default(now())
+}
+
+// Black Friday Early Reservation — a fixed-content kit catalog (real client
+// copy: Spot Fade Kit, Acne Clear + Fade Kit, Body Glow Set), reservable with
+// a ₦5,000 deposit now, balance due on a fixed date (Black Friday itself).
+// Kept entirely separate from Combo/TreatmentKit since the two-stage
+// deposit-then-balance payment flow is unique to this feature.
+model ReservationKit {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  name         String
+  totalPrice   Float
+  depositAmount Float
+  // The public (non-reserved) Black Friday price, shown struck through next
+  // to the reservation price when it's higher — e.g. Body Glow Set's
+  // "₦3,000 less than the public Black Friday price of ₦63,000". Null when
+  // there's no separate public price to compare against.
+  publicPrice  Float?
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  reservations KitReservation[]
+}
+
+enum KitReservationStatus {
+  RESERVED
+  BALANCE_PAID
+  CANCELLED
+}
+
+model KitReservation {
+  id        String         @id @default(cuid())
+  kitId     String
+  kit       ReservationKit @relation(fields: [kitId], references: [id])
+  fullName  String
+  email     String
+  phone     String
+  depositAmount    Float
+  depositPaid      Boolean   @default(false)
+  depositReference String?   @unique
+  balanceAmount    Float
+  balanceDueDate   DateTime
+  balancePaid      Boolean   @default(false)
+  balanceReference String?   @unique
+  status    KitReservationStatus @default(RESERVED)
+  createdAt DateTime             @default(now())
 }
 
 model SavedProduct {

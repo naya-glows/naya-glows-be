@@ -47,6 +47,30 @@ export function cartReminderEmail(name: string, items: { name: string; qty: numb
   );
 }
 
+export function reservationConfirmationEmail(opts: {
+  name: string;
+  kitName: string;
+  totalPrice: number;
+  depositAmount: number;
+  balanceAmount: number;
+  balanceDueDate: string;
+}) {
+  return wrapper(
+    "Your Black Friday Reservation",
+    `
+    <p>Hi ${opts.name}, your spot is reserved. Here's a summary:</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0; font-size:13px;">
+      <tr><td style="padding:6px 0; color:#16241a80;">Kit</td><td style="padding:6px 0; text-align:right; font-weight:600;">${opts.kitName}</td></tr>
+      <tr><td style="padding:6px 0; color:#16241a80;">Total price</td><td style="padding:6px 0; text-align:right;">₦${opts.totalPrice.toLocaleString()}</td></tr>
+      <tr><td style="padding:6px 0; color:#16241a80;">Deposit paid</td><td style="padding:6px 0; text-align:right; color:#4f7957; font-weight:600;">₦${opts.depositAmount.toLocaleString()}</td></tr>
+      <tr><td style="padding:6px 0; color:#16241a80;">Balance due</td><td style="padding:6px 0; text-align:right; font-weight:600;">₦${opts.balanceAmount.toLocaleString()}</td></tr>
+      <tr><td style="padding:6px 0; color:#16241a80;">Balance due date</td><td style="padding:6px 0; text-align:right;">${opts.balanceDueDate}</td></tr>
+    </table>
+    <p>We'll email you when it's time to pay the remaining balance.</p>
+  `,
+  );
+}
+
 export function welcomeEmail(name: string) {
   return wrapper(
     "You're In!",
