@@ -189,31 +189,43 @@ model SeasonalSale {
 
 // Config for the seasonal promotional pop-up + spin-to-win mechanic —
 // everything the brief asks to be editable without a rebuild (graphic,
-// copy, prize odds, dates, social links, popup frequency) lives here as one
-// admin-managed row per campaign.
+// copy, reward value, dates, social links, popup frequency) lives here as
+// one admin-managed row per campaign. Reusable across campaigns (Black
+// Friday, Valentine's, Christmas, ...) — only one should be isActive with
+// overlapping dates at a time, enforced at the admin-UI/service level, not
+// the schema.
 model Campaign {
-  id                String   @id @default(cuid())
-  name              String
-  isActive          Boolean  @default(false)
-  startDate         DateTime
-  endDate           DateTime
-  popupHeadline     String
-  popupCopy         String
-  popupImage        String?
-  ctaText           String
+  id            String   @id @default(cuid())
+  name          String
+  isActive      Boolean  @default(false)
+  startDate     DateTime
+  endDate       DateTime
+  popupHeadline String
+  popupCopy     String
+  popupImage    String?
+  ctaText       String
   // Where "browse and purchase" sends the visitor after claiming a prize —
   // normally a SeasonalSale's slug, e.g. "/sale/black-friday".
-  landingPath       String
-  // [{ label, weight, rewardType: "discount_code" | "message", rewardValue }]
-  prizes            Json
+  landingPath   String
+  // Flat reward amount in Naira — per updated-directives.txt's final
+  // clarification, "the wheel should always award ₦1,000 off whenever a
+  // participant spins" (replacing an earlier weighted multi-prize design).
+  // Still admin-editable per campaign, just never randomized. Snapshotted
+  // onto each Lead at spin time so a later edit here never changes an
+  // already-issued code's value.
+  rewardValueNgn Int     @default(1000)
+  // How many days a generated reward code stays redeemable after a spin.
+  codeValidDays  Int     @default(14)
+  redemptionRules String?
+  termsText      String?
   // [{ platform, url }]
-  socialLinks       Json
+  socialLinks   Json
   // Don't show the popup again to the same visitor for this many days after
   // it's been shown/dismissed once (brief: "frequency controls").
   popupFrequencyDays Int     @default(7)
-  consentText       String
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  consentText   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   leads Lead[]
 }
@@ -221,18 +233,23 @@ model Campaign {
 // A spin-to-win lead — captured once, exportable by admin (brief: "leads
 // are exportable"). Not linked to a User; this is a marketing capture, not
 // an account, since the visitor hasn't signed up for anything yet.
+// rewardCode is redeemable as a flat-amount discount at checkout (see
+// orders.service.ts), same mechanism as GLOW15 but single-use and expiring.
 model Lead {
-  id           String   @id @default(cuid())
-  campaignId   String
-  campaign     Campaign @relation(fields: [campaignId], references: [id])
-  fullName     String
-  phone        String
-  address      String
-  email        String?
-  socialHandle String?
-  prizeWon     String
-  consentGiven Boolean  @default(false)
-  createdAt    DateTime @default(now())
+  id              String   @id @default(cuid())
+  campaignId      String
+  campaign        Campaign @relation(fields: [campaignId], references: [id])
+  fullName        String
+  phone           String
+  address         String
+  email           String?
+  socialHandle    String?
+  rewardValueNgn  Int
+  rewardCode      String   @unique
+  rewardExpiresAt DateTime
+  rewardRedeemed  Boolean  @default(false)
+  consentGiven    Boolean  @default(false)
+  createdAt       DateTime @default(now())
 }
 
 enum KitEnrollmentStatus {

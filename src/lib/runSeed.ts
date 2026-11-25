@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import { defaultProducts } from "../data/defaultProducts";
 import { createTreatmentKit } from "../modules/kits/kits.service";
+import { createCampaign } from "../modules/campaigns/campaigns.service";
 
 // Real, client-supplied Black Friday reservation kits (not placeholders) —
 // "Black Friday Early Reservation Feature" brief. A ₦5,000 deposit now,
@@ -148,6 +149,43 @@ async function seedReservationKits() {
   console.log(`[seed] Seeded/verified ${created} Black Friday reservation kits.`);
 }
 
+// One default spin-to-win campaign so the system isn't empty on first
+// deploy — reuses the Black Friday Early Reservation's own real headline
+// and social URLs from updated-directives.txt; redemptionRules/termsText
+// are "Missing details" per the user's own instruction for genuinely
+// unsupplied copy (the original brief explicitly flagged "final reward/
+// prize rules and discount redemption details" as not yet supplied).
+// Admin-editable afterward from /admin/campaigns — this is a starting
+// point, not permanent content.
+async function seedDefaultCampaign() {
+  const existing = await prisma.campaign.findFirst();
+  if (existing) return;
+
+  await createCampaign({
+    name: "Black Friday 2026",
+    isActive: true,
+    startDate: new Date().toISOString(),
+    endDate: "2026-11-30T23:59:59.000Z",
+    popupHeadline: "Black Friday never reach, but you fit enter now! 😉",
+    popupCopy: "Spin the wheel for ₦1,000 off, then reserve your Black Friday kit with just a ₦5,000 deposit.",
+    ctaText: "Spin to Win",
+    landingPath: "/black-friday",
+    rewardValueNgn: 1000,
+    codeValidDays: 14,
+    redemptionRules: "Missing details. Missing details.",
+    termsText: "Missing details. Missing details.",
+    socialLinks: [
+      { platform: "TikTok", url: "https://www.tiktok.com/@nayaglows?_r=1&_t=ZS-9BfdbYQfLan" },
+      { platform: "Instagram", url: "https://www.instagram.com/naya_glows?gwpx=MWlyM2hkY2l6enE3eA%3D%3D&utm_source=qr" },
+      { platform: "Facebook", url: "https://www.facebook.com/share/191L5aUehq/?mibextid=wwXIfr" },
+    ],
+    popupFrequencyDays: 7,
+    consentText:
+      "By entering your details, you agree to receive promotional messages from Naya Glows about this and future offers.",
+  });
+  console.log("[seed] Seeded default spin-to-win campaign.");
+}
+
 async function seedTreatmentKits() {
   let created = 0;
   for (const kit of defaultTreatmentKits) {
@@ -175,4 +213,5 @@ export async function runSeed() {
   await seedConsultationTypes();
   await seedReservationKits();
   await seedTreatmentKits();
+  await seedDefaultCampaign();
 }

@@ -139,17 +139,31 @@ export async function createOrder(input: {
   let discountAmount = 0;
   if (input.discountCode) {
     const normalized = input.discountCode.trim().toUpperCase();
-    if (normalized !== GLOW15_CODE) {
-      throw new AppError("That discount code isn't valid.");
+    if (normalized === GLOW15_CODE) {
+      const paidOrderCount = await prisma.order.count({
+        where: { userId: input.userId, status: "PAID" },
+      });
+      if (paidOrderCount >= GLOW15_MAX_ORDERS) {
+        throw new AppError(`${GLOW15_CODE} is only valid for your first ${GLOW15_MAX_ORDERS} orders.`);
+      }
+      discountCode = GLOW15_CODE;
+      discountAmount = round2(subtotal * (GLOW15_PERCENT / 100));
+    } else {
+      // Spin-to-win reward code (see leads.service.ts) — single-use and
+      // expiring, unlike GLOW15. Claimed atomically (same shape as
+      // payments.service.ts's confirmPaystackPayment) so two concurrent
+      // checkouts can't both spend the same code.
+      const lead = await prisma.lead.findUnique({ where: { rewardCode: normalized } });
+      if (!lead) throw new AppError("That discount code isn't valid.");
+      if (lead.rewardExpiresAt < new Date()) throw new AppError("This discount code has expired.");
+      const claim = await prisma.lead.updateMany({
+        where: { id: lead.id, rewardRedeemed: false },
+        data: { rewardRedeemed: true },
+      });
+      if (claim.count === 0) throw new AppError("This discount code has already been used.");
+      discountCode = lead.rewardCode;
+      discountAmount = Math.min(lead.rewardValueNgn, subtotal);
     }
-    const paidOrderCount = await prisma.order.count({
-      where: { userId: input.userId, status: "PAID" },
-    });
-    if (paidOrderCount >= GLOW15_MAX_ORDERS) {
-      throw new AppError(`${GLOW15_CODE} is only valid for your first ${GLOW15_MAX_ORDERS} orders.`);
-    }
-    discountCode = GLOW15_CODE;
-    discountAmount = round2(subtotal * (GLOW15_PERCENT / 100));
   }
 
   const discountedSubtotal = round2(subtotal - discountAmount);
