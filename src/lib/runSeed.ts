@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import { defaultProducts } from "../data/defaultProducts";
+import { createTreatmentKit } from "../modules/kits/kits.service";
 
 // Real, client-supplied Black Friday reservation kits (not placeholders) —
 // "Black Friday Early Reservation Feature" brief. A ₦5,000 deposit now,
@@ -19,6 +20,52 @@ const defaultReservationKits = [
   { slug: "spot-fade-kit", name: "Spot Fade Kit", totalPrice: 29500, depositAmount: 5000, publicPrice: null, sortOrder: 0 },
   { slug: "acne-clear-fade-kit", name: "Acne Clear + Fade Kit", totalPrice: 31000, depositAmount: 5000, publicPrice: null, sortOrder: 1 },
   { slug: "body-glow-set", name: "Body Glow Set (Full Kit)", totalPrice: 60000, depositAmount: 5000, publicPrice: 63000, sortOrder: 2 },
+];
+
+// Real, client-supplied Treatment Kit tiers — Bronze/Silver/Gold pricing and
+// duration are the brief's own proposed figures (never revised by
+// updated-directives.txt), kept as plain "Complete skincare kit for N
+// months" copy since no richer per-tier breakdown was ever supplied.
+// Premium's benefits are updated-directives.txt's final, real copy
+// ("Premium Package – ₦2,000,000"), superseding the original brief's
+// looser "3 months past subscription" draft wording.
+const defaultTreatmentKits = [
+  {
+    slug: "bronze-kit",
+    name: "Bronze",
+    durationMonths: 2,
+    price: 250000,
+    benefits: ["Complete skincare kit for two months"],
+    sortOrder: 0,
+  },
+  {
+    slug: "silver-kit",
+    name: "Silver",
+    durationMonths: 4,
+    price: 550000,
+    benefits: ["Complete skincare kit for four months"],
+    sortOrder: 1,
+  },
+  {
+    slug: "gold-kit",
+    name: "Gold",
+    durationMonths: 8,
+    price: 1000000,
+    benefits: ["Complete skincare kit for eight months"],
+    sortOrder: 2,
+  },
+  {
+    slug: "premium-kit",
+    name: "Premium",
+    durationMonths: 12,
+    price: 2000000,
+    benefits: [
+      "12 Months of Skincare Supply: A full year of personalised skincare products to support your skin goals.",
+      "3 Months of Complimentary Spa Experiences: Access to complimentary spa experiences through our partnered spa, within the programme period.",
+      "3 Months of Skin Specialist Support: Three months of dedicated access to our skincare specialist for ongoing guidance and support as you work towards your skincare goals.",
+    ],
+    sortOrder: 3,
+  },
 ];
 
 async function seedAdmin() {
@@ -101,6 +148,20 @@ async function seedReservationKits() {
   console.log(`[seed] Seeded/verified ${created} Black Friday reservation kits.`);
 }
 
+async function seedTreatmentKits() {
+  let created = 0;
+  for (const kit of defaultTreatmentKits) {
+    const existing = await prisma.treatmentKit.findUnique({ where: { slug: kit.slug } });
+    if (existing) continue;
+    // Goes through the service function (not a raw upsert, unlike the other
+    // seed helpers above) so the kit's synthetic Product row gets created
+    // too — createTreatmentKit is what makes it purchasable via cart/checkout.
+    await createTreatmentKit(kit);
+    created += 1;
+  }
+  console.log(`[seed] Seeded ${created} treatment kits.`);
+}
+
 // Idempotent (seedAdmin skips if the email already exists, seedProducts/
 // seedReservationKits upsert without overwriting) — safe to call on every
 // server boot, not just once manually. Called from src/index.ts on every
@@ -113,4 +174,5 @@ export async function runSeed() {
   await seedProducts();
   await seedConsultationTypes();
   await seedReservationKits();
+  await seedTreatmentKits();
 }

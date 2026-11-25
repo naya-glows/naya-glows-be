@@ -10,6 +10,7 @@ import {
   refundProcessedEmail,
 } from "../../lib/emailTemplates";
 import { createProductSubscriptionsForOrder } from "../subscriptions/productSubscriptions.service";
+import { createKitEnrollmentsForOrder } from "../kits/kits.service";
 import { getPlanByOrderId, TERM_LABELS } from "../subscriptions/subscriptionPlans.service";
 
 function round2(n: number): number {
@@ -92,7 +93,7 @@ export async function confirmPaystackPayment(reference: string) {
   const updatedOrder = await prisma.order.update({
     where: { id: payment.orderId },
     data: { status: succeeded ? "PAID" : "FAILED", paidAt: succeeded ? new Date() : undefined },
-    include: { items: { include: { product: { select: { name: true } } } } },
+    include: { items: { include: { product: { select: { name: true, slug: true, isKit: true } } } } },
   });
 
   if (succeeded) {
@@ -158,6 +159,21 @@ export async function confirmPaystackPayment(reference: string) {
             }
           })
           .catch((err) => console.error("[payments] Failed to create product subscription(s):", err));
+      }
+    }
+
+    // Treatment Kit enrollment — same fire-and-forget side-effect shape as
+    // Subscription A above. KitEnrollment.userId is required, so a guest
+    // checkout (no account) simply never gets one; a kit purchased without
+    // an account has no ongoing specialist-access window to track anyway.
+    if (updatedOrder.userId) {
+      const kitProductSlugs = updatedOrder.items
+        .filter((item) => item.product.isKit)
+        .map((item) => item.product.slug);
+      if (kitProductSlugs.length > 0) {
+        createKitEnrollmentsForOrder(updatedOrder.userId, updatedOrder.id, kitProductSlugs).catch((err) =>
+          console.error("[payments] Failed to create kit enrollment(s):", err),
+        );
       }
     }
   }

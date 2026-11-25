@@ -20,6 +20,7 @@ import { influencersRouter, adminInfluencersRouter } from "./modules/influencers
 import { cartRouter } from "./modules/cart/cart.routes";
 import { subscriptionsRouter, adminSubscriptionsRouter } from "./modules/subscriptions/subscriptions.routes";
 import combosRoutes, { adminCombosRouter } from "./modules/combos/combos.routes";
+import kitsRoutes, { adminKitsRouter } from "./modules/kits/kits.routes";
 import salesRoutes, { adminSalesRouter } from "./modules/sales/sales.routes";
 import reservationsRoutes, { adminReservationsRouter } from "./modules/reservations/reservations.routes";
 import type { AuthedRequest } from "./middleware/auth";
@@ -99,6 +100,8 @@ export function createApp() {
   app.use("/admin/subscriptions", adminSubscriptionsRouter);
   app.use("/combos", combosRoutes);
   app.use("/admin/combos", adminCombosRouter);
+  app.use("/kits", kitsRoutes);
+  app.use("/admin/kits", adminKitsRouter);
   app.use("/sales", salesRoutes);
   app.use("/admin/sales", adminSalesRouter);
   app.use("/reservations", reservationsRoutes);

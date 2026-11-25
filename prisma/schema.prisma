@@ -131,6 +131,11 @@ model Product {
   // when it matters (e.g. admin order detail).
   isCombo          Boolean  @default(false)
   comboProductSlugs String[] @default([])
+  // Same convention as isCombo, for the synthetic Product row a
+  // TreatmentKit upserts for itself (see TreatmentKit below) — lets a kit
+  // purchase flow through cart/checkout unmodified, while payments.service.ts
+  // can tell "this line item is a kit" apart to create its KitEnrollment.
+  isKit         Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
