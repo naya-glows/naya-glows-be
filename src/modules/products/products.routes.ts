@@ -3,13 +3,14 @@ import { z } from "zod";
 import {
   listActiveProducts,
   getProductBySlug,
+  searchActiveProducts,
   createProduct,
   updateProduct,
   deleteProduct,
 } from "./products.service";
 import { requireAdmin } from "../../middleware/auth";
 import { asyncHandler } from "../../lib/asyncHandler";
-import { toSetchProduct, pushProductsToSetch, deleteProductFromSetch } from "../../lib/setch";
+import { toSetchProduct, pushProductsToSetch, deleteProductFromSetch, absoluteUrl } from "../../lib/setch";
 
 const router = Router();
 
@@ -18,6 +19,35 @@ router.get(
   asyncHandler(async (_req, res) => {
     const products = await listActiveProducts();
     res.json({ products });
+  }),
+);
+
+// Backs Setch's "Connect your product search" (live product search) —
+// called directly by Setch at question time, server-side, with whatever
+// filter query params it was configured to send. Mounted before GET
+// /:slug so "/search" is never swallowed as a slug lookup. Returns a bare
+// JSON array (not wrapped in {products: [...]}) since Setch's "where the
+// product list is" field can then be left blank ("response is the list").
+router.get(
+  "/search",
+  asyncHandler(async (req, res) => {
+    const q = typeof req.query.search === "string" ? req.query.search : undefined;
+    const category = typeof req.query.category === "string" ? req.query.category : undefined;
+    const minPrice = req.query.min_price ? Number(req.query.min_price) : undefined;
+    const maxPrice = req.query.max_price ? Number(req.query.max_price) : undefined;
+
+    const results = await searchActiveProducts({ q, category, minPrice, maxPrice });
+
+    res.json(
+      results.map((p) => ({
+        name: p.name,
+        price: Math.round(p.price),
+        category: p.category,
+        url: absoluteUrl(`/products/${p.slug}`),
+        image: absoluteUrl(p.image),
+        stock_status: p.inStock === false ? "out_of_stock" : "in_stock",
+      })),
+    );
   }),
 );
 

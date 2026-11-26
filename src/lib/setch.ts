@@ -16,7 +16,7 @@ type ProductForSetch = {
   inStock: boolean;
 };
 
-function absoluteUrl(pathOrUrl: string): string {
+export function absoluteUrl(pathOrUrl: string): string {
   if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
   return `${SITE_URL}${pathOrUrl.startsWith("/") ? "" : "/"}${pathOrUrl}`;
 }
