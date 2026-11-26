@@ -9,6 +9,7 @@ import { ordersRouter, adminOrdersRouter } from "./modules/orders/orders.routes"
 import { paymentsRouter } from "./modules/payments/payments.routes";
 import { paystackWebhookRouter } from "./modules/payments/webhook.routes";
 import { consultationsRouter, adminConsultationsRouter } from "./modules/consultations/consultations.routes";
+import { calendarRouter } from "./modules/consultations/calendar.routes";
 import { wholesaleRouter, adminWholesaleRouter } from "./modules/wholesale/wholesale.routes";
 import { savedProductsRouter } from "./modules/saved-products/saved-products.routes";
 import { settingsRouter, adminSettingsRouter } from "./modules/settings/settings.routes";
@@ -82,6 +83,9 @@ export function createApp() {
   app.use("/orders", ordersRouter);
   app.use("/admin/orders", adminOrdersRouter);
   app.use("/payments", paymentsRouter);
+  // Mounted before consultationsRouter so its exact "/calendar.ics" path
+  // matches before that router's "GET /:id" would otherwise swallow it.
+  app.use("/consultations", calendarRouter);
   app.use("/consultations", consultationsRouter);
   app.use("/admin/consultations", adminConsultationsRouter);
   app.use("/wholesale-inquiries", wholesaleRouter);

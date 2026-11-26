@@ -244,3 +244,14 @@ export function rescheduleConsultation(id: string, scheduledDate: Date) {
 export function cancelConsultation(id: string) {
   return prisma.consultationRequest.update({ where: { id }, data: { status: "CANCELLED" } });
 }
+
+// Backs the ICS subscribe-by-URL feed (see calendar.routes.ts) — only
+// confirmed, scheduled bookings, paid or not (an unpaid-but-booked slot
+// still occupies the admin's time and belongs on the calendar).
+export function listScheduledConsultationsForFeed() {
+  return prisma.consultationRequest.findMany({
+    where: { scheduledDate: { not: null }, status: { not: "CANCELLED" } },
+    include: { consultationType: true },
+    orderBy: { scheduledDate: "asc" },
+  });
+}

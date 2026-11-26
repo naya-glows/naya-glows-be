@@ -125,6 +125,22 @@ adminConsultationsRouter.get(
   }),
 );
 
+// Returns the full, ready-to-paste feed URL (host + token) rather than
+// just the token — the admin shouldn't have to know this backend's own
+// base URL, and req.get("host") is always correct even behind a custom
+// domain or after an infra migration.
+adminConsultationsRouter.get(
+  "/calendar-feed-url",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    if (!process.env.CALENDAR_FEED_TOKEN) {
+      return res.status(500).json({ error: "CALENDAR_FEED_TOKEN isn't configured on the server." });
+    }
+    const url = `${req.protocol}://${req.get("host")}/consultations/calendar.ics?token=${process.env.CALENDAR_FEED_TOKEN}`;
+    res.json({ url });
+  }),
+);
+
 adminConsultationsRouter.get(
   "/types",
   requireAdmin,
