@@ -168,6 +168,7 @@ async function seedDefaultCampaign() {
     endDate: "2026-11-30T23:59:59.000Z",
     popupHeadline: "Black Friday never reach, but you fit enter now! 😉",
     popupCopy: "Spin the wheel for ₦1,000 off, then reserve your Black Friday kit with just a ₦5,000 deposit.",
+    popupImage: "https://res.cloudinary.com/bhozkz7o/image/upload/v1795668924/naya-glows/cemkhcjffpxkikj8xwbd.jpg",
     ctaText: "Spin to Win",
     landingPath: "/black-friday",
     rewardValueNgn: 1000,
