@@ -1,5 +1,7 @@
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../lib/appError";
+import { sendMail } from "../../lib/mailer";
+import { leadRewardCodeEmail } from "../../lib/emailTemplates";
 
 function generateCandidateCode(): string {
   const suffix = Math.random().toString(36).slice(2, 8).toUpperCase().padEnd(6, "X");
@@ -34,7 +36,7 @@ export async function createLead(input: LeadInput) {
   const rewardExpiresAt = new Date();
   rewardExpiresAt.setDate(rewardExpiresAt.getDate() + campaign.codeValidDays);
 
-  return prisma.lead.create({
+  const lead = await prisma.lead.create({
     data: {
       campaignId: campaign.id,
       fullName: input.fullName,
@@ -48,6 +50,25 @@ export async function createLead(input: LeadInput) {
       rewardExpiresAt,
     },
   });
+
+  // Email is optional on this form — the code is always shown on screen
+  // regardless, so a missing address (or a failed send) never blocks the
+  // visitor from having their code. Fire-and-forget, same shape as every
+  // other best-effort confirmation email in this codebase.
+  if (lead.email) {
+    sendMail({
+      to: lead.email,
+      subject: "Your Naya Glows reward code",
+      html: leadRewardCodeEmail({
+        name: lead.fullName,
+        rewardValueNgn: lead.rewardValueNgn,
+        rewardCode: lead.rewardCode,
+        expiresAt: rewardExpiresAt.toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" }),
+      }),
+    }).catch((err) => console.error("[leads] Failed to send reward code email:", err));
+  }
+
+  return lead;
 }
 
 export function listLeads() {

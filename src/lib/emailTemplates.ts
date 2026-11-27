@@ -71,6 +71,25 @@ export function reservationConfirmationEmail(opts: {
   );
 }
 
+export function leadRewardCodeEmail(opts: {
+  name: string;
+  rewardValueNgn: number;
+  rewardCode: string;
+  expiresAt: string;
+}) {
+  return wrapper(
+    "Your Reward Code",
+    `
+    <p>Hi ${opts.name}, thanks for spinning! Here's your ₦${opts.rewardValueNgn.toLocaleString()} off code — save this email so it's here whenever you're ready to shop.</p>
+    <p style="font-size:28px; font-weight:700; letter-spacing:0.2em; text-align:center; color:#16241a; background:#f4faf3; border-radius:12px; padding:16px; margin:20px 0;">${opts.rewardCode}</p>
+    <p style="color:#16241a80; font-size:12px;">Valid until ${opts.expiresAt}. Enter it at checkout — it's a one-time code, so it only works once.</p>
+    <p style="margin-top:24px;">
+      <a href="https://nayaglows.skin/catalog" style="display:inline-block; background:#16241a; color:#fff; text-decoration:none; padding:12px 24px; border-radius:999px; font-weight:600; font-size:13px;">Start Shopping</a>
+    </p>
+  `,
+  );
+}
+
 export function welcomeEmail(name: string) {
   return wrapper(
     "You're In!",
