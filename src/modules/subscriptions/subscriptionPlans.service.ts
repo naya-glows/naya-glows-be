@@ -1,4 +1,5 @@
 import type { Prisma, SubscriptionTerm } from "@prisma/client";
+import { waitUntil } from "@vercel/functions";
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../lib/appError";
 import { sendMail } from "../../lib/mailer";
@@ -181,11 +182,13 @@ export async function cancelSubscriptionPlan(userId: string, planId: string) {
 
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
   if (user?.email) {
-    sendMail({
-      to: user.email,
-      subject: "Your Subscribe & Save plan has been cancelled",
-      html: subscriptionPlanCancelledEmail(TERM_LABELS[plan.term], refundAmount, "NGN"),
-    }).catch((err) => console.error("[subscriptions] Failed to send cancellation email:", err));
+    waitUntil(
+      sendMail({
+        to: user.email,
+        subject: "Your Subscribe & Save plan has been cancelled",
+        html: subscriptionPlanCancelledEmail(TERM_LABELS[plan.term], refundAmount, "NGN"),
+      }).catch((err) => console.error("[subscriptions] Failed to send cancellation email:", err)),
+    );
   }
 
   return { plan: updatedPlan, refundAmount };

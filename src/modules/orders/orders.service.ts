@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { waitUntil } from "@vercel/functions";
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../lib/appError";
 import { getTrackingStageLabel } from "./tracking";
@@ -228,11 +229,13 @@ export async function setOrderManualStage(id: string, manualStage: string | null
     if (email && label) {
       // Fire-and-forget — the stage change is already saved above, so the
       // admin's UI shouldn't hang on the customer notification email.
-      sendMail({
-        to: email,
-        subject: `Your Naya Glows order is now: ${label}`,
-        html: orderStatusUpdateEmail(order, label),
-      }).catch((err) => console.error("[orders] Failed to send tracking update email:", err));
+      waitUntil(
+        sendMail({
+          to: email,
+          subject: `Your Naya Glows order is now: ${label}`,
+          html: orderStatusUpdateEmail(order, label),
+        }).catch((err) => console.error("[orders] Failed to send tracking update email:", err)),
+      );
     }
   }
 

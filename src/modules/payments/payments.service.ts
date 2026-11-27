@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { waitUntil } from "@vercel/functions";
 import { prisma } from "../../lib/prisma";
 import { verifyTransaction, refundTransaction } from "./paystack";
 import { sendMail } from "../../lib/mailer";
@@ -113,23 +114,27 @@ export async function confirmPaystackPayment(reference: string) {
     // spinner hung for as long as the SMTP send took, including its
     // multi-second/-minute timeout on failure).
     if (email && plan) {
-      sendMail({
-        to: email,
-        subject: "Your Subscribe & Save plan is confirmed",
-        html: subscriptionPlanConfirmationEmail({
-          termLabel: TERM_LABELS[plan.term],
-          totalPaid: plan.totalPaid,
-          currency: updatedOrder.currency,
-          fulfillmentMode: plan.fulfillmentMode,
-          items: (plan.items as { name: string; qtyPerMonth: number }[]) ?? [],
-        }),
-      }).catch((err) => console.error("[payments] Failed to send plan confirmation email:", err));
+      waitUntil(
+        sendMail({
+          to: email,
+          subject: "Your Subscribe & Save plan is confirmed",
+          html: subscriptionPlanConfirmationEmail({
+            termLabel: TERM_LABELS[plan.term],
+            totalPaid: plan.totalPaid,
+            currency: updatedOrder.currency,
+            fulfillmentMode: plan.fulfillmentMode,
+            items: (plan.items as { name: string; qtyPerMonth: number }[]) ?? [],
+          }),
+        }).catch((err) => console.error("[payments] Failed to send plan confirmation email:", err)),
+      );
     } else if (email) {
-      sendMail({
-        to: email,
-        subject: "Your Naya Glows order is confirmed",
-        html: orderConfirmationEmail(updatedOrder, email),
-      }).catch((err) => console.error("[payments] Failed to send order confirmation email:", err));
+      waitUntil(
+        sendMail({
+          to: email,
+          subject: "Your Naya Glows order is confirmed",
+          html: orderConfirmationEmail(updatedOrder, email),
+        }).catch((err) => console.error("[payments] Failed to send order confirmation email:", err)),
+      );
     }
 
     // "Subscription A" enrollment — items.isSubscription here means "this
@@ -144,21 +149,23 @@ export async function confirmPaystackPayment(reference: string) {
         .filter((item) => item.isSubscription)
         .map((item) => item.productId);
       if (subscribeProductIds.length > 0) {
-        createProductSubscriptionsForOrder(updatedOrder.userId, updatedOrder.id, subscribeProductIds)
-          .then((created) => {
-            if (created.length > 0 && email) {
-              const items = created.map((c) => ({
-                name: updatedOrder.items.find((i) => i.productId === c.productId)?.product.name ?? "",
-                code: c.code,
-              }));
-              return sendMail({
-                to: email,
-                subject: "You've unlocked a reorder discount",
-                html: subscriptionCodeEmail(items),
-              });
-            }
-          })
-          .catch((err) => console.error("[payments] Failed to create product subscription(s):", err));
+        waitUntil(
+          createProductSubscriptionsForOrder(updatedOrder.userId, updatedOrder.id, subscribeProductIds)
+            .then((created) => {
+              if (created.length > 0 && email) {
+                const items = created.map((c) => ({
+                  name: updatedOrder.items.find((i) => i.productId === c.productId)?.product.name ?? "",
+                  code: c.code,
+                }));
+                return sendMail({
+                  to: email,
+                  subject: "You've unlocked a reorder discount",
+                  html: subscriptionCodeEmail(items),
+                });
+              }
+            })
+            .catch((err) => console.error("[payments] Failed to create product subscription(s):", err)),
+        );
       }
     }
 
@@ -171,8 +178,10 @@ export async function confirmPaystackPayment(reference: string) {
         .filter((item) => item.product.isKit)
         .map((item) => item.product.slug);
       if (kitProductSlugs.length > 0) {
-        createKitEnrollmentsForOrder(updatedOrder.userId, updatedOrder.id, kitProductSlugs).catch((err) =>
-          console.error("[payments] Failed to create kit enrollment(s):", err),
+        waitUntil(
+          createKitEnrollmentsForOrder(updatedOrder.userId, updatedOrder.id, kitProductSlugs).catch((err) =>
+            console.error("[payments] Failed to create kit enrollment(s):", err),
+          ),
         );
       }
     }
@@ -280,11 +289,13 @@ export async function refundOrder(orderId: string, amount?: number) {
 
   const shippingDetails = order.shippingDetails as { email?: string } | null;
   if (shippingDetails?.email) {
-    sendMail({
-      to: shippingDetails.email,
-      subject: isFullyRefunded ? "Your Naya Glows order has been refunded" : "A refund has been issued",
-      html: refundProcessedEmail(order, refundAmount, order.currency, isFullyRefunded),
-    }).catch((err) => console.error("[payments] Failed to send refund email:", err));
+    waitUntil(
+      sendMail({
+        to: shippingDetails.email,
+        subject: isFullyRefunded ? "Your Naya Glows order has been refunded" : "A refund has been issued",
+        html: refundProcessedEmail(order, refundAmount, order.currency, isFullyRefunded),
+      }).catch((err) => console.error("[payments] Failed to send refund email:", err)),
+    );
   }
 
   return { payment: updatedPayment, order: updatedOrder, refundAmount };

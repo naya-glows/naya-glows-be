@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { waitUntil } from "@vercel/functions";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma";
 import { asyncHandler } from "../../lib/asyncHandler";
@@ -26,11 +27,13 @@ contactRouter.post(
     const contactMessage = await prisma.contactMessage.create({ data: parsed.data });
 
     // Fire-and-forget — the message is already saved above.
-    sendMail({
-      to: getAdminNotificationEmail(),
-      subject: "New contact message",
-      html: contactMessageAdminNotification(contactMessage),
-    }).catch((err) => console.error("[contact] Failed to send admin notification email:", err));
+    waitUntil(
+      sendMail({
+        to: getAdminNotificationEmail(),
+        subject: "New contact message",
+        html: contactMessageAdminNotification(contactMessage),
+      }).catch((err) => console.error("[contact] Failed to send admin notification email:", err)),
+    );
 
     res.status(201).json({ contactMessage });
   }),

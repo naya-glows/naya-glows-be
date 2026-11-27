@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { waitUntil } from "@vercel/functions";
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../lib/appError";
 import { initializeTransaction, verifyTransaction } from "../payments/paystack";
@@ -173,16 +174,20 @@ export async function createConsultationBooking(input: CreateBookingInput) {
     include: { consultationType: true },
   });
 
-  sendMail({
-    to: request.email,
-    subject: "We've received your consultation request",
-    html: consultationReceivedEmail(request),
-  }).catch((err) => console.error("[consultations] Failed to send confirmation email:", err));
-  sendMail({
-    to: getAdminNotificationEmail(),
-    subject: "New consultation booking",
-    html: consultationAdminNotification(request),
-  }).catch((err) => console.error("[consultations] Failed to send admin notification email:", err));
+  waitUntil(
+    sendMail({
+      to: request.email,
+      subject: "We've received your consultation request",
+      html: consultationReceivedEmail(request),
+    }).catch((err) => console.error("[consultations] Failed to send confirmation email:", err)),
+  );
+  waitUntil(
+    sendMail({
+      to: getAdminNotificationEmail(),
+      subject: "New consultation booking",
+      html: consultationAdminNotification(request),
+    }).catch((err) => console.error("[consultations] Failed to send admin notification email:", err)),
+  );
 
   return request;
 }

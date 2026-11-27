@@ -1,3 +1,4 @@
+import { waitUntil } from "@vercel/functions";
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../lib/appError";
 import { sendMail } from "../../lib/mailer";
@@ -56,16 +57,18 @@ export async function createLead(input: LeadInput) {
   // visitor from having their code. Fire-and-forget, same shape as every
   // other best-effort confirmation email in this codebase.
   if (lead.email) {
-    sendMail({
-      to: lead.email,
-      subject: "Your Naya Glows reward code",
-      html: leadRewardCodeEmail({
-        name: lead.fullName,
-        rewardValueNgn: lead.rewardValueNgn,
-        rewardCode: lead.rewardCode,
-        expiresAt: rewardExpiresAt.toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" }),
-      }),
-    }).catch((err) => console.error("[leads] Failed to send reward code email:", err));
+    waitUntil(
+      sendMail({
+        to: lead.email,
+        subject: "Your Naya Glows reward code",
+        html: leadRewardCodeEmail({
+          name: lead.fullName,
+          rewardValueNgn: lead.rewardValueNgn,
+          rewardCode: lead.rewardCode,
+          expiresAt: rewardExpiresAt.toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" }),
+        }),
+      }).catch((err) => console.error("[leads] Failed to send reward code email:", err)),
+    );
   }
 
   return lead;

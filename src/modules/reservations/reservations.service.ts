@@ -1,3 +1,4 @@
+import { waitUntil } from "@vercel/functions";
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../lib/appError";
 import { initializeTransaction, verifyTransaction } from "../payments/paystack";
@@ -150,22 +151,24 @@ export async function verifyReservationPayment(id: string, reference: string) {
   });
 
   if (isDepositRef) {
-    sendMail({
-      to: updated.email,
-      subject: "Your Black Friday Reservation",
-      html: reservationConfirmationEmail({
-        name: updated.fullName,
-        kitName: updated.kit.name,
-        totalPrice: updated.kit.totalPrice,
-        depositAmount: updated.depositAmount,
-        balanceAmount: updated.balanceAmount,
-        balanceDueDate: updated.balanceDueDate.toLocaleDateString("en-NG", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
+    waitUntil(
+      sendMail({
+        to: updated.email,
+        subject: "Your Black Friday Reservation",
+        html: reservationConfirmationEmail({
+          name: updated.fullName,
+          kitName: updated.kit.name,
+          totalPrice: updated.kit.totalPrice,
+          depositAmount: updated.depositAmount,
+          balanceAmount: updated.balanceAmount,
+          balanceDueDate: updated.balanceDueDate.toLocaleDateString("en-NG", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          }),
         }),
-      }),
-    }).catch((err) => console.error("[reservations] Failed to send confirmation email:", err));
+      }).catch((err) => console.error("[reservations] Failed to send confirmation email:", err)),
+    );
   }
 
   return updated;

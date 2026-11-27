@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { waitUntil } from "@vercel/functions";
 import { prisma } from "../../lib/prisma";
 import { signToken } from "../../lib/jwt";
 import { currencyForCountry } from "../../lib/currency";
@@ -130,12 +131,18 @@ export async function registerUser(input: {
   const token = signToken({ userId: user.id, role: user.role });
 
   // Fire-and-forget: a welcome email failing to send shouldn't fail the
-  // signup itself, the account is already created at this point.
-  sendMail({
-    to: user.email,
-    subject: "Welcome to Naya Glows",
-    html: welcomeEmail(user.firstName),
-  }).catch((err) => console.error("[auth] Failed to send welcome email:", err));
+  // signup itself, the account is already created at this point. Wrapped in
+  // waitUntil so Vercel keeps this invocation alive long enough for the
+  // Resend call to actually finish after the response is already sent —
+  // without it, the function can freeze mid-send and the email never goes
+  // out at all.
+  waitUntil(
+    sendMail({
+      to: user.email,
+      subject: "Welcome to Naya Glows",
+      html: welcomeEmail(user.firstName),
+    }).catch((err) => console.error("[auth] Failed to send welcome email:", err)),
+  );
 
   return { user, token };
 }
