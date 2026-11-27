@@ -27,7 +27,6 @@ import { leadsRouter, adminLeadsRouter } from "./modules/leads/leads.routes";
 import salesRoutes, { adminSalesRouter } from "./modules/sales/sales.routes";
 import reservationsRoutes, { adminReservationsRouter } from "./modules/reservations/reservations.routes";
 import type { AuthedRequest } from "./middleware/auth";
-import { requireAdmin } from "./middleware/auth";
 
 export function createApp() {
   const app = express();
@@ -117,33 +116,6 @@ export function createApp() {
   app.use("/admin/sales", adminSalesRouter);
   app.use("/reservations", reservationsRoutes);
   app.use("/admin/reservations", adminReservationsRouter);
-
-  // TEMPORARY diagnostic route — calls Resend directly, server-side where
-  // the real RESEND_API_KEY actually lives, and returns the raw result
-  // (including any error) so we can see why a send is failing without
-  // needing production log access. Admin-gated. Remove once diagnosed.
-  app.get("/admin/_diag/email-test", requireAdmin, async (req, res) => {
-    const to = String(req.query.to || "");
-    if (!to) return res.status(400).json({ error: "?to= is required" });
-    try {
-      const { Resend } = await import("resend");
-      const apiKey = process.env.RESEND_API_KEY;
-      const from = process.env.RESEND_FROM_EMAIL || "Naya Glows <no-reply@nayaglows.skin>";
-      if (!apiKey) {
-        return res.json({ ok: false, reason: "RESEND_API_KEY is not set in this environment" });
-      }
-      const resend = new Resend(apiKey);
-      const result = await resend.emails.send({
-        from,
-        to,
-        subject: "Naya Glows diagnostic test",
-        html: "<p>Diagnostic test email — please ignore.</p>",
-      });
-      res.json({ ok: !result.error, apiKeyLength: apiKey.length, from, result });
-    } catch (err) {
-      res.json({ ok: false, caught: err instanceof Error ? err.message : String(err) });
-    }
-  });
 
   app.use((_req, res) => {
     res.status(404).json({ error: "Not found" });
